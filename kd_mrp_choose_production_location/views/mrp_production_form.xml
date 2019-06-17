@@ -1,0 +1,14 @@
+<odoo>
+  <data>
+     <record id="mrp_bom_form_view" model="ir.ui.view">
+        <field name="name">mrp.production.form</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <field name="location_src_id" position="after">
+                <field name="production_location_id" attrs="{'invisible': True}"/>
+            </field>
+        </field>
+    </record>
+  </data>
+</odoo>
