@@ -1,0 +1,61 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	* bill_separate_categories
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 11.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-03-18 07:36+0000\n"
+"PO-Revision-Date: 2019-03-18 07:36+0000\n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:61
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:97
+#, python-format
+msgid ".............................END.........................."
+msgstr ""
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:30
+#, python-format
+msgid "CANCELLED"
+msgstr ""
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:21
+#, python-format
+msgid "Floor:"
+msgstr ""
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:70
+#, python-format
+msgid "NEW"
+msgstr ""
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:45
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:85
+#, python-format
+msgid "Qty="
+msgstr ""
+
+#. module: bill_separate_categories
+#. openerp-web
+#: code:addons/bill_separate_categories/static/src/xml/kitchen_ticket.xml:25
+#, python-format
+msgid "Table:"
+msgstr ""
+
