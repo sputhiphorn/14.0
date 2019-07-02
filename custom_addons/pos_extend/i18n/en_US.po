@@ -1,0 +1,318 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	* pos_extend
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 11.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-03-18 10:44+0000\n"
+"PO-Revision-Date: 2019-03-18 10:44+0000\n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:75
+#, python-format
+msgid "% discount"
+msgstr "% discount"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:62
+#, python-format
+msgid "AMOUNT"
+msgstr "AMOUNT"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Base Amount"
+msgstr "Base Amount"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/payment_pad.xml:35
+#, python-format
+msgid "Cancel"
+msgstr "Cancel"
+
+#. module: pos_extend
+#: model:ir.model,name:pos_extend.model_res_currency
+msgid "Currency"
+msgstr "Currency"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/pos_template_extend.xml:12
+#, python-format
+msgid "Dis.("
+msgstr "Dis.("
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Disc:"
+msgstr "Disc: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:178
+#, python-format
+msgid "EHT Paul Dubrule"
+msgstr "EHT Paul Dubrule"
+
+#. module: pos_extend
+#: model:ir.model.fields,field_description:pos_extend.field_pos_order_ean13
+msgid "Ean13"
+msgstr "Ean13"
+
+#. module: pos_extend
+#: model:ir.model.fields,field_description:pos_extend.field_pos_order_exchange_rate
+msgid "Exchange Rate"
+msgstr "Exchange Rate"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:58
+#, python-format
+msgid "ITEMS"
+msgstr "ITEMS"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Name"
+msgstr "Name"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/payment_pad.xml:38
+#, python-format
+msgid "Ok"
+msgstr "Ok"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:60
+#, python-format
+msgid "PRICE"
+msgstr "PRICE"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/pos_template_extend.xml:6
+#, python-format
+msgid "Pay In Riel"
+msgstr "Pay In Riel"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Payments"
+msgstr "Payments"
+
+#. module: pos_extend
+#: model:ir.model,name:pos_extend.model_pos_order
+msgid "Point of Sale Orders"
+msgstr "Point of Sale Orders"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Price Unit"
+msgstr "Price Unit"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Product"
+msgstr "Product"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Products"
+msgstr "Products"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:59
+#, python-format
+msgid "QTY"
+msgstr "QTY"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Quantity"
+msgstr "Quantity"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Sales Details"
+msgstr "Sales Details"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:20
+#, python-format
+msgid "Served By:"
+msgstr "Served By: "
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Tax Amount"
+msgstr "Tax Amount"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Taxes"
+msgstr "Taxes"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:14
+#, python-format
+msgid "Terminal:"
+msgstr "Terminal: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:178
+#, python-format
+msgid "Thank you for visiting and supporting"
+msgstr "Thank you for visiting and supporting"
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Total"
+msgstr "Total"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:134
+#, python-format
+msgid "Total(USD):"
+msgstr "Total(USD): "
+
+#. module: pos_extend
+#: model:ir.ui.view,arch_db:pos_extend.inherit_report_saledetails
+msgid "Total:"
+msgstr "Total: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:74
+#, python-format
+msgid "With a"
+msgstr "With a"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:24
+#, python-format
+msgid "កាលបរិច្ឆេទ/Date:"
+msgstr "កាលបរិច្ឆេទ/Date: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml
+#, python-format
+msgid "លេខវិក្កយបត្រ/Bill:"
+msgstr "លេខវិក្កយបត្រ/Bill: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:25
+#, python-format
+msgid "លេខវិក្កយបត្រ/Receipt:"
+msgstr "លេខវិក្កយបត្រ/Receipt: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:52
+#, python-format
+msgid "ចំនួន"
+msgstr "ចំនួន"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:53
+#, python-format
+msgid "តម្លៃ"
+msgstr "តម្លៃ"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:37
+#, python-format
+msgid "ទូរស័ព្ទ/M:"
+msgstr "ទូរស័ព្ទ/M: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:118
+#, python-format
+msgid "បញ្ជុះតម្លៃ/Dis.:"
+msgstr "បញ្ជុះតម្លៃ/Dis.: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:51
+#, python-format
+msgid "បរិយាយ"
+msgstr "បរិយាយ"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:31
+#, python-format
+msgid "ភ្ញៀវ/Pax:"
+msgstr "ភ្ញៀវ/Pax: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:162
+#, python-format
+msgid "លុយអាប់/Change:"
+msgstr "លុយអាប់/Change: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:28
+#, python-format
+msgid "លេខតុ/Table:"
+msgstr "លេខតុ/Table: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:55
+#, python-format
+msgid "សរុប"
+msgstr "សរុប"
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:112
+#, python-format
+msgid "សរុប/Subtotal:"
+msgstr "សរុប/Subtotal: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:140
+#, python-format
+msgid "សរុបរួម(KHR):"
+msgstr "សរុបរួម(KHR): "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:36
+#, python-format
+msgid "អតិថិជន/Customer:"
+msgstr "អតិថិជន/Customer: "
+
+#. module: pos_extend
+#. openerp-web
+#: code:addons/pos_extend/static/src/xml/posticket.xml:36
+#, python-format
+msgid "1$:"
+msgstr "1$: "
