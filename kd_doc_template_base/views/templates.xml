@@ -1,0 +1,14 @@
+<odoo>
+    <data>
+        <template id="report_assets_backend" name="kd_doc_template_base less assets" inherit_id="web.report_assets_common">
+            <xpath expr="." position="inside">
+                <link href="/kd_doc_template_base/static/src/less/custom_report.less" rel="stylesheet" type="text/less"/>
+            </xpath>
+        </template>
+        <template id="report_assets_pdf_css" name="kd_doc_template_base pdf_css assets" inherit_id="web.report_assets_pdf">
+            <xpath expr="." position="inside">
+                <link href="/kd_doc_template_base/static/src/css/custom_report.css" rel="stylesheet" type="text/css"/>
+            </xpath>
+        </template>
+    </data>
+</odoo>

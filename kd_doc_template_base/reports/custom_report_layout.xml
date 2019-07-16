@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--Custom Report Layout-->
+        <template id="external_layout_custom">
+            <div class="header o_report_layout_custom">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <img style="width: 100%" t-if="company.report_logo" t-att-src="'data:image/png;base64,%s' % to_text(company.report_logo)"/>
+                    </div>
+                </div>
+            </div>
+            <div class="article o_report_layout_custom">
+              <t t-raw="0" />
+            </div>
+            <div class="footer o_custom_footer">
+                <div class="text-center">
+                    <ul class="list-inline">
+                        <li t-if="company.phone">Tel: <span t-field="company.phone"/></li>
+                        <li t-if="company.email">Mail: <span t-field="company.email"/></li>
+                        <li t-if="company.website">Web: <span t-field="company.website"/></li>
+                        <li t-if="company.vat"><t t-esc="company.country_id.vat_label or 'TIN'"/>: <span t-field="company.vat"/></li>
+                    </ul>
+                    <div t-field="company.report_footer"/>
+                    <div>
+                        Page: <span class="page"/> / <span class="topage"/>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <!--Invoice Report-->
+        <template id="custom_report_invoice_with_payments" inherit_id="account.report_invoice_with_payments">
+            <xpath expr="//t[@t-call='web.html_container']" position="replace">
+                <t t-call="web.html_container">
+                    <t t-foreach="docs" t-as="o">
+                        <t t-if="o.company_id.external_report_layout == 'custom'">
+                            <t t-set="data_report_margin_top" t-value="450"/>
+                            <t t-set="data_report_header_spacing" t-value="400"/>
+                            <t t-call="kd_doc_template_base.custom_report_invoice_document" t-lang="o.partner_id.lang"/>
+                        </t>
+                        <t t-else="">
+                            <t t-call="account.report_invoice_document_with_payments" t-lang="o.partner_id.lang"/>
+                        </t>
+                    </t>
+                </t>
+            </xpath>
+        </template>
+        <!--Configuration for report layout-->
+        <template id="custom_external_layout" inherit_id="web.external_layout">
+            <xpath expr="//t[@t-if=&quot;company.external_report_layout == 'clean'&quot;]" position="after">
+                <t t-if="company.external_report_layout == 'custom'">
+                    <t t-call="kd_doc_template_base.external_layout_custom"><t t-raw="0"/></t>
+                </t>
+            </xpath>
+        </template>
+    </data>
+</odoo>

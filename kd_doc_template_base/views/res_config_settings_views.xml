@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sale.invoicesequence</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="20"/>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@data-key='account_invoicing']" position="inside">
+                <div id="sequence_tax_withouttax">
+                    <h2>Invoice Tax and Commercial Invoice</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="sequence_tax_withouttax"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="sequence_tax_withouttax"/>
+                                <div class="text-muted">
+                                    Invoice Tax and Commercial Invoice for different sequence number
+                                </div>
+                                <div class="content-group" attrs="{'invisible': [('sequence_tax_withouttax','=',False)]}">
+                                    <div class="mt16">
+                                        <label for="journal_tax_id"/> <field name="journal_tax_id" attrs="{'required': [('sequence_tax_withouttax', '=', True)]}"/>
+                                    </div>
+                                    <div class="mt16">
+                                        <label for="journal_withouttax_id"/> <field name="journal_withouttax_id" attrs="{'required': [('sequence_tax_withouttax', '=', True)]}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="sequence_tax_withouttax_by_warehouse"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="sequence_tax_withouttax_by_warehouse"/>
+                                <div class="text-muted">
+                                    Invoice Tax and Commercial Invoice for different sequence number and warehouse
+                                </div>
+                                <div class="content-group" attrs="{'invisible': [('sequence_tax_withouttax_by_warehouse','=',False)]}">
+                                    <button name="%(kd_doc_template_base.commercial_invoice_list_action)d" icon="fa-arrow-right"
+                                            type="action" string="Invoice Tax and Commercial Invoice" class="btn-link"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
