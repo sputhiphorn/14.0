@@ -31,8 +31,8 @@
                             <h4><strong>TAX INVOICE</strong></h4>
                         </t>
                         <t t-else="">
-                            <h4><strong>វិក្កយបត្រ</strong></h4>
-                            <h4><strong>INVOICE</strong></h4>
+                            <h4><strong>វិក្កយបត្រធម្មតា</strong></h4>
+                            <h4><strong>COMMERCIAL INVOICE</strong></h4>
                         </t>
                     </div>
                     <div class="pt-1r">
@@ -100,10 +100,31 @@
                                                   <span t-esc="l.name"/>
                                                 </t>
                                             </td>
-                                            <td></td><td></td><td></td>
-                                            <td></td><td></td><td></td>
+                                            <td style="width: 40px; text-align: right;">
+                                                <t t-if="str(l.quantity - int(l.quantity))[1:].find('.0') != -1">
+                                                    <span t-esc="'%.0f'%(l.quantity)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="'%.1f'%(l.quantity)"/>
+                                                </t>
+                                            </td>
+                                            <td></td><td></td>
+                                            <td style="width: 40px; text-align: right;">
+                                                <t t-if="str(l.quantity - int(l.quantity))[1:].find('.0') != -1">
+                                                    <span t-esc="'%.0f'%(l.quantity)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="'%.1f'%(l.quantity)"/>
+                                                </t>
+                                            </td>
+                                            <td></td><td></td>
                                             <td class="text-right bordered-left bordered-right">
-                                                <span t-field="l.quantity"/>
+                                                <t t-if="str(l.quantity - int(l.quantity))[1:].find('.0') != -1">
+                                                    <span t-esc="'%.0f'%(l.quantity)"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <span t-esc="'%.1f'%(l.quantity)"/>
+                                                </t>
                                             </td>
                                             <td class="text-right bordered-left bordered-right">
                                                 <span t-field="l.price_unit"/>
@@ -149,22 +170,12 @@
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <t t-if="display_discount" groups="sale.group_discount_per_so_line">
-                                                    <td colspan="11" rowspan="1" class="text-right">
+                                                <td colspan="10" rowspan="1" class="text-right">
                                                         សរុបរួម រៀល/Grand Total Riel
-                                                    </td>
-                                                    <td class="text-right" rowspan="3" >
-                                                        <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
-                                                    </td>
-                                                </t>
-                                                <t t-else="">
-                                                    <td colspan="10" rowspan="1" class="text-right">
-                                                        សរុបរួម រៀល/Grand Total Riel
-                                                    </td>
-                                                    <td class="text-right" rowspan="1" >
-                                                        <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
-                                                    </td>
-                                                </t>
+                                                </td>
+                                                <td class="text-right" rowspan="1" >
+                                                    <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
+                                                </td>
                                             </tr>
                                         </t>
                                     </tr>
@@ -199,22 +210,12 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <t t-if="display_discount" groups="sale.group_discount_per_so_line">
-                                                <td colspan="11" rowspan="1" class="text-right">
+                                            <td colspan="10" rowspan="1" class="text-right">
                                                     សរុបរួម រៀល/Grand Total Riel
-                                                </td>
-                                                <td class="text-right" rowspan="3" >
-                                                    <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
-                                                </td>
-                                            </t>
-                                            <t t-else="">
-                                                <td colspan="10" rowspan="1" class="text-right">
-                                                    សរុបរួម រៀល/Grand Total Riel
-                                                </td>
-                                                <td class="text-right" rowspan="1" >
-                                                    <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
-                                                </td>
-                                            </t>
+                                            </td>
+                                            <td class="text-right" rowspan="1" >
+                                                <span t-field="o.amount_total_khmer"/> <span t-field="o.currency_symbol_khmer"/>
+                                            </td>
                                         </tr>
                                     </t>
                                 </tfoot>
