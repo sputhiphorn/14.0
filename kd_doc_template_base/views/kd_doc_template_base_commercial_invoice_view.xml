@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Action -->
+        <record id="commercial_invoice_list_action" model="ir.actions.act_window">
+            <field name="name">Invoice Tax and Commercial Invoice</field>
+            <field name="res_model">kd_doc_template_base.commercial_invoice</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">Create the first Invoice Tax and Commercial Invoice</p>
+            </field>
+        </record>
+
+        <!-- Views -->
+        <record id="commercial_invoice_form_view" model="ir.ui.view">
+            <field name="name">kd_doc_template_base.commercial_invoice.form</field>
+            <field name="model">kd_doc_template_base.commercial_invoice</field>
+            <field name="arch" type="xml">
+                <form string="Commercial Invoice Form">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="warehouse_id" class="oe_edit_only"/>
+                            <h1><field name="warehouse_id" class="oe_inline"/></h1>
+                        </div>
+                        <group>
+                            <field name="journal_tax_id"></field>
+                            <field name="journal_withouttax_id"></field>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="commercial_invoice_search_view" model="ir.ui.view">
+            <field name="name">kd_doc_template_base.commercial_invoice.search</field>
+            <field name="model">kd_doc_template_base.commercial_invoice</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="warehouse_id"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="commercial_invoice_tree_view" model="ir.ui.view">
+            <field name="name">kd_doc_template_base.commercial_invoice.tree</field>
+            <field name="model">kd_doc_template_base.commercial_invoice</field>
+            <field name="arch" type="xml">
+                <tree string="Rounding Tree">
+                    <field name="warehouse_id"/>
+                    <field name="journal_tax_id"/>
+                    <field name="journal_withouttax_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Menu -->
+        <!--<menuitem id="menu_action_commercial_invoice_form_view" action="commercial_invoice_list_action"-->
+                  <!--groups="account.group_commercial_invoice" sequence="4"/>-->
+
+    </data>
+</odoo>
