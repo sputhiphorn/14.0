@@ -5,55 +5,55 @@
             <t t-call="web.external_layout">
                 <t t-set="o" t-value="o.with_context({'lang':o.partner_id.lang})" />
                 <div class="page c-b mt--30px">
-                    <div class="table_body">
+                    <div class="table_body" style="margin-top:-60px;">
                         <table class="table table-condensed able table-striped">
-                            <tr>
-                                <td style="font-weight:bold;">អាស័យដ្ឋាន ផ្ទះលេខ<br/>Address: No.</td>
+                            <tr style="font-weight:bold;font-size:10px;">
+                                <td>អាស័យដ្ឋាន ផ្ទះលេខ<br/>Address: No.</td>
                                 <td>219 A</td>
-                                <td style="font-weight:bold;">ផ្លូវលេខ<br/>Street</td>
+                                <td>ផ្លូវលេខ<br/>Street</td>
                                 <td>63</td>
-                                <td style="font-weight:bold;">ឃុំ/សង្កាត់<br/>Commune/Sangkat</td>
+                                <td>ឃុំ/សង្កាត់<br/>Commune/Sangkat</td>
                                 <td>បឹងកេងកង១<br/>Boeng Keng Kang 1</td>
                             </tr>
-                            <tr>
-                                <td style="font-weight:bold;">ក្រុង/ស្រុក/ខ័ណ្ឌ<br/>Town/District/Khan</td>
+                            <tr style="font-weight:bold;font-size:10px;">
+                                <td >ក្រុង/ស្រុក/ខ័ណ្ឌ<br/>Town/District/Khan</td>
                                 <td>ចំការមន<br/>Chamkarmon</td>
-                                <td style="font-weight:bold;">ខេត្ត/រាជធានី<br/>Province/City</td>
+                                <td>ខេត្ត/រាជធានី<br/>Province/City</td>
                                 <td>ភ្នំពេញ<br/>Phnom Penh</td>
-                                <td style="font-weight:bold;">ទូរស័ព្ទលេខ:<br/>Telephone No.</td>
+                                <td>ទូរស័ព្ទលេខ:<br/>Telephone No.</td>
                                 <td>+855 11 300 361</td>
                             </tr>
                         </table>
                     </div>
                     <div class="text-center fontKhmerM1">
-                        <t t-if="o._get_tax_amount_by_group()">
-                            <h4><strong>វិក្កយបត្រអាករ</strong></h4>
-                            <h4><strong>TAX INVOICE</strong></h4>
+                        <t t-if="o.partner_id.vat">
+                            <h5><strong>វិក្កយបត្រអាករ</strong></h5>
+                            <h5><strong>TAX INVOICE</strong></h5>
                         </t>
                         <t t-else="">
-                            <h4><strong>វិក្កយបត្រធម្មតា</strong></h4>
-                            <h4><strong>COMMERCIAL INVOICE</strong></h4>
+                            <h5><strong>វិក្កយបត្រធម្មតា</strong></h5>
+                            <h5><strong>COMMERCIAL INVOICE</strong></h5>
                         </t>
                     </div>
                     <div class="pt-1r">
                         <div class="table_body">
-                            <h5 class="fw-b"> អតិថិជន / Customer:</h5>
+                            <h6 class="fw-b"> អតិថិជន / Customer:</h6>
                             <table class="table table-condensed able table-striped">
-                                <tr>
+                                <tr style="font-size:10px;">
                                     <td class="fw-b">ឈ្មោះក្រុមហ៊ុន ប្ញ អតិថិជន<br/>Company Name/Customer</td>
                                     <td colspan="3" class="fw-b"><span t-field="o.partner_id" /></td>
                                     <td class="fw-b">លេខរៀងវិក្កយបត្រ<br/>Invoice No.</td>
                                     <td><span t-field="o.number"/></td>
                                 </tr>
-                                <tr>
+                                <tr style="font-size:10px;">
                                     <td class="fw-b">អាស័យដ្ឋាន ផ្ទះលេខ<br/>Address: No.</td>
                                     <td style="width:120px"><span t-field="o.partner_id.street"/></td>
                                     <td class="fw-b">ផ្លូវលេខ<br/>Street</td>
-                                    <td><span t-field="o.partner_id.street"/></td>
+                                    <td style="width:120px"><span t-field="o.partner_id.street"/></td>
                                     <td class="fw-b">ឃុំ/សង្កាត់<br/>Commune/Sangkat</td>
                                     <td><span t-field="o.partner_id.street2"/></td>
                                 </tr>
-                                <tr>
+                                <tr style="font-size:10px;">
                                     <td class="fw-b">ក្រុង/ស្រុក/ខ័ណ្ឌ<br/>Town/District/Khan</td>
                                     <td><span t-field="o.partner_id.street2"/></td>
                                     <td class="fw-b">ខេត្ត/រាជធានី<br/>Province/City</td>
@@ -61,10 +61,10 @@
                                     <td class="fw-b">ទូរស័ព្ទលេខ:<br/>Telephone No.</td>
                                     <td><span t-field="o.partner_id.phone"/></td>
                                 </tr>
-                                <tr>
-                                    <t t-if="o._get_tax_amount_by_group()">
+                                <tr style="font-size:10px;">
+                                    <t t-if="o.partner_id.vat">
                                         <td class="fw-b">លេខអត្តសញ្ញាណកម្ម​ អតប<br/>(VATTIN)</td>
-                                        <td colspan="3"><span t-field="o.partner_id.vat" /></td>
+                                        <td colspan="3" style="font-size:14px;"><span t-esc="o.partner_id.vat[0:4]+'-'+o.partner_id.vat[4:]" /></td>
                                         <td class="fw-b">កាលបរិច្ឆេទ<br/>Date:</td>
                                         <td><span t-field="o.date_invoice" /></td>
                                     </t>
@@ -79,7 +79,7 @@
                         <t t-set="display_discount" t-value="any([l.discount for l in o.invoice_line_ids])"/>
                         <div class="table_body">
                             <table class="table table-condensed able table-striped">
-                                <thead>
+                                <thead style="font-size:9px;">
                                     <th style="border:1px;">ល.រ<br/>No.</th>
                                     <th style="border:1px;">បរិយាយមុខទំនិញ<br/>Description</th>
                                     <th colspan="3">បរិមាណ<br/>Quantity Order</th>
@@ -88,7 +88,7 @@
                                     <th>ថ្លៃឯកតា<br/>Unit Price</th>
                                     <th>ថ្លៃទំនិញ<br/>Amount</th>
                                 </thead>
-                                <tbody>
+                                <tbody style="font-size:8px;">
                                     <t t-foreach="o.invoice_line_ids" t-as="l">
                                         <tr>
                                             <td class="bordered-left bordered-right text-center"><span t-esc="l_index + 1" /></td>
@@ -135,7 +135,7 @@
                                         </tr>
                                     </t>
                                 </tbody>
-                                <tfoot>
+                                <tfoot style="font-size:9px;">
                                     <tr>
                                         <t t-if="o._get_tax_amount_by_group()">
                                             <t t-if="display_discount">
