@@ -5,7 +5,7 @@
             <t t-call="web.external_layout">
                 <t t-set="o" t-value="o.with_context({'lang':o.partner_id.lang})" />
                 <div class="page c-b mt--30px">
-                    <div class="table_body" style="margin-top:-60px;">
+                    <div class="table_body" style="margin-top:-55px;">
                         <table class="table table-condensed able table-striped">
                             <tr style="font-weight:bold;font-size:10px;">
                                 <td>អាស័យដ្ឋាន ផ្ទះលេខ<br/>Address: No.</td>
