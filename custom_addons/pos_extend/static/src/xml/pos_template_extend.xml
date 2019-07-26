@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+	<t t-extend="PaymentScreenWidget">
+        <t t-jquery="div.payment-buttons" t-operation="prepend">
+            <div class='button js_pay_in_other_currency'>
+                <i class='fa fa-money' /> Pay In Riel
+            </div>
+        </t>
+     </t>
+</templates>
