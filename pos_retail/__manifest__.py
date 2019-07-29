@@ -30,7 +30,7 @@
         'reports/report_pos_order.xml',
         'reports/pos_sale_report_template.xml',
         'reports/pos_sale_report_view.xml',
-        'datas/product.xml',
+        #'datas/product.xml',
         'datas/schedule.xml',
         'datas/email_template.xml',
         'datas/customer.xml',
