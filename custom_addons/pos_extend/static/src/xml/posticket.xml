@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+	<t t-extend="PosTicket">
+		<t t-jquery="div[class*='pos-sale-ticket']" t-operation="replace">
+			<div class="pos-sale-ticket">
+				<div class="company_card">
+					<div class="company_logo">
+						<img src='/web/binary/company_logo' style="width:100%"/>
+					</div>
+					<div class="company_info">
+						<span  class="company_name"><t t-esc="widget.pos.company.name"/></span><br />
+						<t t-esc="widget.pos.company.street"/>, <t t-esc="widget.pos.company.city"/>, <t t-esc="widget.pos.company.country.name"/><br />
+						<strong><t t-esc="order.get_label_text().label_t" /></strong> <t t-esc="widget.pos.company.phone || ''"/><br />
+						<strong><t t-esc="order.get_label_text().label_terminal" /></strong> <t t-esc="widget.pos.config.name || ''"/><br />
+						<strong><t t-esc="order.get_label_text().label_servedby" /></strong> <t t-esc="widget.pos.cashier ? widget.pos.cashier.name : widget.pos.user.name"/>
+					</div>
+				</div>
+				<div name="order_info">
+					<t t-esc="order.get_label_text().label_t" /><t t-esc="order.get_label_text().label_date" /><t t-esc="moment().format('L LT')"/> <br />
+					<t t-if="paymentlines.length === 0">
+						<t t-esc="order.get_label_text().label_bill" /><t t-esc="order.name"/><br />
+					</t>
+					<t t-else="">
+						<t t-esc="order.get_label_text().label_receipt" /><t t-esc="order.name"/><br />
+					</t>
+				<t t-if="order.table">
+					<t t-esc="order.get_label_text().label_table" /><t t-esc="order.table.name"/><br />
+				</t>
+				<t t-if="order.customer_count">
+					<t t-esc="order.get_label_text().label_pax" /><t t-esc="order.customer_count"/><br />
+				</t>
+					<t t-set="client" t-value="order.get_client()"/>
+					<t t-if="client and widget.pos.config.receipt_customer_vat">
+						<t t-set="client" t-value="order.get_client()"/>
+						<t t-esc="order.get_label_text().label_customer" /><t t-esc="client['name']"/><br />
+						<t t-esc="order.get_label_text().label_customerphone" /><t t-esc="client['phone'] || client['mobile'] || ''"/>
+					</t>
+					<br />
+				</div>
+				<t t-if="receipt.header">
+					<div style='text-align:center'>
+						<t t-esc="receipt.header" />
+					</div>
+				</t>
+				<table class='receipt-orderlines'>
+					<tr>
+						<th class="pos-left-align" width='40%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_desc" /></th>
+						<th class="centern" width='15%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_qtykh" /></th>
+						<th class="pos-right-align" width="13%" style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_pricekh" /></th>
+						<th class="pos-right-align" width='27%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_totalkh" /></th>
+					</tr>
+					<tr>
+						<th class="pos-left-align" width='40%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_items" /></th>
+						<th class="center" width='15%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_qty" /></th>
+						<th class="pos-right-align" width="13%" style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_price" /></th>
+						<th class="pos-right-align" width='27%' style="border-top: dotted 1px #000"><t t-esc="order.get_label_text().label_amount" /></th>
+					</tr>
+					<t t-set="dis" t-value="0" />
+				   	<t t-if="widget.pos.config.module_pos_discount">
+					  	<tr t-foreach="orderlines" t-as="orderline">
+						 	<t t-if="orderline.get_product().id == widget.pos.config.discount_product_id[0]">
+								<t t-set="dis" t-value="orderline.get_display_price()" />
+						 	</t>
+						 	<div t-if="orderline.get_product().id != widget.pos.config.discount_product_id[0]">
+								<td style="border-bottom: dotted 1px #000;padding-top:3px;">
+									<div style="line-height: 1.1em;">
+										<t t-esc="orderline.get_product().display_name"/>
+										<div t-if="orderline.get_discount() > 0">
+											<div class="pos-disc-font">
+												With a <t t-esc="orderline.get_discount()"/><t t-esc="order.get_label_text().label_discount" />
+											</div>
+										</div>
+									</div>
+								</td>
+								<td class="center" style="border-bottom: dotted 1px #000">
+							   		<t t-esc="orderline.get_quantity_str_with_unit()"/>
+								</td>
+								<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+							   		<t t-esc='orderline.price - orderline.get_tax()' />
+								</td >
+								<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+							   		<t t-esc="widget.format_currency_no_symbol(orderline.get_display_price())"/>
+								</td>
+						 	</div>
+					  	</tr>
+				   	</t>
+				   	<t t-else="">
+					  	<tr t-foreach="orderlines" t-as="orderline">
+						 	<td style="border-bottom: dotted 1px #000;padding-top:3px;">
+								<div style="line-height: 1.1em;">
+							   		<t t-esc="orderline.get_product().display_name"/>
+							   		<div t-if="orderline.get_discount() > 0">
+								  		<div class="pos-disc-font">
+									 		With a <t t-esc="orderline.get_discount()"/><t t-esc="order.get_label_text().label_discount" />
+								  		</div>
+							   		</div>
+								</div>
+						 	</td>
+						 	<td class="center" style="border-bottom: dotted 1px #000">
+								<t t-esc="orderline.get_quantity_str_with_unit()"/>
+						 	</td>
+						 	<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+								<t t-esc='orderline.price - orderline.get_tax()' />
+						 	</td >
+						 	<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+								<t t-esc="widget.format_currency_no_symbol(orderline.get_display_price())"/>
+						 	</td>
+					  	</tr>
+				   	</t>
+				</table>
+				<!-- Subtotal and Totals -->
+				<table class='receipt-total'>
+					<tr><td>&#160;</td></tr>
+					<tr>
+					  	<td><t t-esc="order.get_label_text().label_subtotal" /></td>
+					  	<td class="pos-right-align">
+						 	<t t-set="total" t-value="0" />
+						 	<t t-if="widget.pos.config.module_pos_discount">
+								<t t-foreach="orderlines" t-as="orderline">
+							   		<t t-if="orderline.get_product().id != widget.pos.config.discount_product_id[0]">
+								  		<t t-set="total" t-value="total + orderline.get_display_price()" />
+							   		</t>
+								</t>
+						 	</t>
+						 	<t t-else="">
+								<t t-foreach="orderlines" t-as="orderline">
+							   		<t t-set="total" t-value="total + orderline.get_display_price()" />
+								</t>
+						 	</t>
+						 	<t t-esc="widget.format_currency(total)"/>
+					  	</td>
+				   	</tr>
+				   	<t t-foreach="order.get_tax_details()" t-as="taxdetail">
+					  	<tr>
+						 	<td><t t-esc="taxdetail.name" /></td>
+						 	<td class="pos-right-align">
+								<t t-esc="widget.format_currency(taxdetail.amount)" />
+						 	</td>
+					  	</tr>
+				   	</t>
+				   	<tr>
+					  	<td style="border-bottom: dotted 1px #000"><t t-esc="order.get_label_text().label_discount" /></td>
+					  	<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+						 	<t t-esc="widget.format_currency(dis)"/>
+					  	</td>
+				   	</tr>
+					<tr class="emph">
+						<td  style="border-bottom: dotted 1px #000; font-size: 14px;"><t t-esc="order.get_label_text().label_total" /></td>
+						<td class="pos-right-align"  style="border-bottom: dotted 1px #000">
+							<t t-esc="widget.format_currency(order.get_total_with_tax())"/><br />
+						</td>
+					</tr>
+					<tr class="emph">
+						<td  style="border-bottom: dotted 1px #000; font-size: 14px;"><t t-esc="order.get_label_text().label_grandtotalkh" /></td>
+						<td class="pos-right-align"  style="border-bottom: dotted 1px #000">
+						   <t t-esc="'៛'+widget.format_currency_no_symbol(order.get_total_in_other_currency())"/>
+						</td>
+					</tr>
+				</table>
+				<br />
+				<table class='receipt-paymentlines'>
+					<t t-foreach="paymentlines" t-as="line">
+					  <tr>
+						  <td>
+							  <t t-esc="line.name"/>
+						  </td>
+						  <td class="pos-right-align">
+							  <t t-esc="widget.format_currency(line.get_amount())"/>
+						  </td>
+					  </tr>
+					</t>
+				</table>
+				<table class='receipt-change'>
+					<tr><td style="border-bottom: dotted 1px #000"><t t-esc="order.get_label_text().label_moneychange" /></td>
+						<td class="pos-right-align" style="border-bottom: dotted 1px #000">
+							<t t-esc="widget.format_currency(order.get_change())"/>
+						</td>
+					</tr>
+				</table>
+				<t t-if="receipt.footer">
+					<br />
+					<div style='text-align:center'>
+						<t t-esc="receipt.footer" />
+					</div>
+				</t>
+				<div align="center"><t t-esc="order.get_label_text().label_onedollar" /><t t-esc="widget.format_currency_no_symbol(order.exchange_rate)+' ៛'"/></div>
+				<div align="center"><t t-raw="widget.pos.company.website.replace('http://','') || ''"/></div>
+				<div align="center" style="margin-top: 3px;"><img id="barcode" style="height: 100px;"/></div>
+			</div>
+		</t>
+	</t>
+	<t t-extend="Chrome">
+		<t t-jquery='.pos-logo' t-operation='replace'>
+			<img class="pos-logo" src="/web/binary/company_logo" />
+		</t>
+	</t>
+</templates>
