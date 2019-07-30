@@ -7,27 +7,25 @@
     font-size: 12px !important;
     padding-bottom:30px;
     display: inline-block;
-    font-family: "Monospaced";
+    font-family: "Inconsolata";
     border: solid 1px rgb(220,220,220);
     border-radius: 3px;
     overflow: hidden;
 }
 .pos .pos-sale-ticket .company_card {
-    border-bottom: 1px dashed; 
-    display: inline-block;
+    border-bottom: 1px dashed;
 }
 .pos .pos-sale-ticket .company_info {
-    width: 60%;
-    float: left;
-    padding: 20px 0px 6px;
+    width: 100%;
+    text-align: center;
 }
 .pos .pos-sale-ticket .company_info .company_name {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
 }
 .pos .pos-sale-ticket .company_logo {
-    width: 40%;
-    float: right;
+    width: 100%;
+    text-align: center;
 }
 
 .pos_underline{
