@@ -3,6 +3,7 @@ from odoo import api, models, fields, _
 from odoo.exceptions import Warning
 
 
+
 class AccountInvoice(models.Model):
     _inherit = "account.invoice"
 
@@ -22,10 +23,12 @@ class AccountInvoice(models.Model):
             sequence_tax_withouttax = self.env['ir.config_parameter'].sudo().get_param('kd_invoice-sequence-tax-withouttax.sequence_tax_withouttax')
             sequence_tax_withouttax_by_warehouse = self.env['ir.config_parameter'].sudo().get_param('kd_invoice-sequence-tax-withouttax.sequence_tax_withouttax_by_warehouse')
             if sequence_tax_withouttax == 'True':
+                pid = self.env['res.partner']._find_accounting_partner(self.partner_id).id
+                view = self.env['res.partner'].search([('id', '=', pid)], limit=1)
                 tax = super(AccountInvoice, self)._get_tax_amount_by_group()
                 journal_tax_id = int(self.env['ir.config_parameter'].sudo().get_param('kd_invoice-sequence-tax-withouttax.journal_tax_id'))
                 journal_withouttax_id = int(self.env['ir.config_parameter'].sudo().get_param('kd_invoice-sequence-tax-withouttax.journal_withouttax_id'))
-                if not tax:
+                if not view.vat:
                     self.journal_id = journal_withouttax_id
                 else:
                     self.journal_id = journal_tax_id
