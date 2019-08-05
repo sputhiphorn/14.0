@@ -52,9 +52,6 @@
 							</td>
 							<td class="center" style="border-bottom: dotted 1px #000">
 								<t t-esc="orderline.get_quantity()"/>
-								<t t-if='orderline.get_unit().name != "Unit(s)"'>
-									<t t-esc='orderline.get_unit().name' />
-								</t>
 							</td>
 							<td class="pos-right-align" style="border-bottom: dotted 1px #000">
 								<t t-esc="widget.format_currency_no_symbol(orderline.price)" />
