@@ -52,9 +52,6 @@
 							</td>
 							<td class="center" style="border-bottom: dotted 1px #000">
 								<t t-esc="orderline.get_quantity()"/>
-								<t t-if='orderline.get_unit().name != "Unit(s)"'>
-									<t t-esc='orderline.get_unit().name' />
-								</t>
 							</td>
 							<td class="pos-right-align" style="border-bottom: dotted 1px #000">
 								<t t-esc="widget.format_currency_no_symbol(orderline.price)" />
@@ -73,7 +70,7 @@
 			<table class='receipt-total'>
 				<br/>
 				<tr class="emph">
-					<td  style="font-size: 13px;">Total</td>
+					<td style="font-size: 13px;">Total</td>
 					<td class="pos-right-align" style="font-size: 13px;">
 						<t t-esc="widget.format_currency(order.get_total_with_tax() + Math.abs(priceDiscount)) "/><br />
 					</td>
@@ -90,6 +87,12 @@
 					<td  style="font-size: 13px;">Sub Total</td>
 					<td class="pos-right-align" style="font-size: 13px;">
 						<t t-esc="widget.format_currency(order.get_total_with_tax()) "/><br />
+					</td>
+				</tr>
+				<tr class="emph">
+					<td  style="font-size: 13px;">Tax</td>
+					<td class="pos-right-align" style="font-size: 13px;">
+						<t t-esc="widget.format_currency(order.get_total_with_tax() * 0.1)"/><br />
 					</td>
 				</tr>
 				<tr class="emph">
@@ -142,6 +145,7 @@
 					</div>
 				</div>
 			</t>
+			<div align="center" style="font-size: 11px;">All our prices are in US dollars inclusive VAT</div>
 			<div align="center">Thank You Please Come Again</div>
 			<t t-if="receipt.footer">
 				<div align="center" style="margin-top: 3px;font-size=12px">
