@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="kd_pos_retail_hidden_assets" name="kd_pos_retail_hidden assets" inherit_id="point_of_sale.assets">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/kd_pos_retail_hidden/static/src/js/screen_product_category.js"/>
+        </xpath>
+    </template>
+</odoo>
