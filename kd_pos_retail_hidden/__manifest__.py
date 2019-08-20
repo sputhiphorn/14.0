@@ -11,8 +11,8 @@
     'depends': ['base', 'point_of_sale', 'pos_retail'],
     'license': 'OPL-1',
     'data': [
-    	#'views/register.xml',
-    	'views/pos_config.xml'
+        'views/pos_config.xml',
+        'views/import_library.xml'
     ],
     # 'qweb': ['static/src/xml/*.xml'],
     # 'images': ['static/description/banner.png'],
