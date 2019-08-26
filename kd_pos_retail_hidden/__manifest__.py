@@ -14,7 +14,7 @@
         'views/pos_config.xml',
         'views/import_library.xml'
     ],
-    # 'qweb': ['static/src/xml/*.xml'],
+    'qweb': ['static/src/xml/*.xml'],
     # 'images': ['static/description/banner.png'],
     'demo': [],
     'installable': True,

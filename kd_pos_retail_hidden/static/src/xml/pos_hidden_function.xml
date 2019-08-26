@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-extend="remove_orders_blank_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace"></t>
+    </t>
+    <t t-extend="lock_session_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace"></t>
+    </t>
+    <t t-extend="report_button_widget">
+        <t t-jquery="div[class*='shop_logo']" t-operation="replace"></t>
+    </t>
+    <t t-extend="sync_backend_status">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace"></t>
+    </t>
+    <t t-extend="products_view_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace"></t>
+    </t>
+
+    <t t-extend="button_remove_pos_cache">
+        <t t-jquery="div[class*='left_button']" t-operation="replace"></t>
+    </t>
+    <t t-extend="button_sync_orders">
+        <t t-jquery="div[class*='left_button']" t-operation="replace"></t>
+    </t>
+    <t t-extend="button_combo_item_add_lot">
+        <t t-jquery="div[class*='left_button']" t-operation="replace"></t>
+    </t>
+    <t t-extend="button_set_seller">
+        <t t-jquery="div[class*='left_button']" t-operation="replace"></t>
+    </t>
+    <t t-extend="SetFiscalPositionButton">
+        <t t-jquery="div[class*='left_button']" t-operation="replace"></t>
+    </t>
+</templates>
