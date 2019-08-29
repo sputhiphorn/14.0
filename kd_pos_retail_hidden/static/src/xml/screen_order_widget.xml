@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <t t-extend="ProductScreenWidget">
+        <t t-jquery="div[class*='leftpane']" t-operation="replace">
+            <div style="width:350px;" class="leftpane">
+                <div class='window'>
+                    <div class='subwindow'>
+                        <div class='subwindow-container'>
+                            <div class='subwindow-container-fix'>
+                                <div class="placeholder-OrderWidget"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class='subwindow collapsed'>
+                        <div class='subwindow-container'>
+                            <div class='subwindow-container-fix pads'>
+                                <div class="control-buttons oe_hidden"></div>
+                                <div class="placeholder-ActionpadWidget"></div>
+                                <div class="placeholder-NumpadWidget"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </t>
+        <t t-jquery="div[class*='rightpane']" t-operation="replace">
+            <div style="margin-left:-180px;" class="rightpane">
+                <table class="layout-table">
+
+                    <tr class="header-row">
+                        <td class="header-cell">
+                            <span class="placeholder-ProductCategoriesWidget" />
+                        </td>
+                    </tr>
+
+                    <tr class="content-row">
+                        <td class="content-cell">
+                            <div class="content-container">
+                                <span class="placeholder-ProductListWidget" />
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+        </t>
+        <t t-jquery="div[class*='buttons_pane']" t-operation="replace">
+            <div style="margin-left:-180px;" class="buttons_pane">
+                <div class="button-list"/>
+            </div>
+        </t>
+    </t>
+
+    <t t-extend="ActionpadWidget">
+        <t t-jquery="div[class*='actionpad']" t-operation="replace">
+            <div class="actionpad" style="width:120px;">
+                <button t-attf-class='button set-customer #{ ( widget.pos.get_client() and widget.pos.get_client().name.length > 10) ? "decentered" : "" }' >
+                    <i class='fa fa-user' />
+                    <t t-if="widget.pos.get_client()">
+                        <t t-esc="widget.pos.get_client().name" />
+                    </t>
+                    <t t-if="!widget.pos.get_client()">
+                        Customer
+                    </t>
+                </button>
+                <button class='button pay'>
+                    <div class='pay-circle'>
+                        <i class='fa fa-chevron-right' />
+                    </div>
+                    Payment
+                </button>
+            </div>
+        </t>
+        <t t-jquery="button[t-attf-class*='button set-customer']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_customer">
+                <button style="width:120px;" t-attf-class='button set-customer #{ ( widget.pos.get_client() and widget.pos.get_client().name.length > 10) ? "decentered" : "" }'>
+                    <t t-if="widget.pos.config.keyboard_event">
+                        <span class="button_key" style="float:right">
+                            <i class="fa fa-keyboard"></i>
+                            c
+                        </span>
+                    </t>
+                    <t t-if="widget.pos.get_client()">
+                        <t t-esc="widget.pos.get_client().name"/>
+                    </t>
+                    <t t-if="!widget.pos.get_client()">
+                        Customer
+                    </t>
+                </button>
+            </t>
+            <t t-if="!widget.pos.config.allow_customer">
+                <button t-attf-class='button set-customer #{ ( widget.pos.get_client() and widget.pos.get_client().name.length > 10) ? "decentered" : "" }'
+                        style="display:none">
+                    <t t-if="widget.pos.config.keyboard_event">
+                        <span class="button_key">
+                            c
+                        </span>
+                    </t>
+                    <t t-if="!widget.pos.get_client()">
+                        Customer
+                    </t>
+                </button>
+            </t>
+        </t>
+        <t t-jquery="button[class*='pay']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_payment">
+                <button style="width:120px; font-size:16px;" class='button pay'>
+                    <div class="button-icon">
+                        <img src="/pos_retail/static/src/icons/atm.png" class="pos_logo"/>
+                    </div>
+                    Payment
+                    <t t-if="widget.pos.config.keyboard_event">
+                        <span class="button_key">
+                            Space
+                        </span>
+                    </t>
+                    <t t-set="client" t-value="widget.pos.get_client()"/>
+                    <t t-if="client">
+                        <t t-if="client.balance">
+                            <li class="client-special-info">
+                                Credit: <t t-esc="widget.format_currency(client.balance)"/>
+                            </li>
+                        </t>
+                        <t t-if="client.wallet">
+                            <li class="client-special-info">
+                                Wallet: <t t-esc="widget.format_currency(client.wallet)"/>
+                            </li>
+                        </t>
+                        <t t-if="client.pos_loyalty_point">
+                            <li class="client-special-info">
+                                Point: <t t-esc="client.pos_loyalty_point"/>
+                            </li>
+                        </t>
+
+                    </t>
+                </button>
+            </t>
+            <t t-if="!widget.pos.config.allow_payment">
+                <button class='button pay' style="display:none">
+                    <div class="button-icon">
+                        <img src="/pos_retail/static/src/icons/atm.png" class="pos_logo"/>
+                    </div>
+                    Payment
+                    <t t-if="widget.pos.config.keyboard_event">
+                        <span class="button_key">
+                            Space
+                        </span>
+                    </t>
+                </button>
+            </t>
+        </t>
+    </t>
+
+    <t t-extend="NumpadWidget">
+        <t t-jquery="div[class*='numpad']" t-operation="replace">
+            <div style="width:220px; float:left; margin-left:10px;" class="numpad">
+                <t t-if="widget.pos.config.allow_numpad">
+                    <button style="width:50px;" class="input-button number-char">1</button>
+                    <button style="width:50px;" class="input-button number-char">2</button>
+                    <button style="width:50px;" class="input-button number-char">3</button>
+                </t>
+                <t t-if="!widget.pos.config.allow_numpad">
+                    <button class="input-button number-char" style="visibility: hidden">1</button>
+                    <button class="input-button number-char" style="visibility: hidden">2</button>
+                    <button class="input-button number-char" style="visibility: hidden">3</button>
+                </t>
+                <t t-if="widget.pos.config.allow_qty">
+                    <button style="width:50px;" class="mode-button" data-mode='quantity'>Qty
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    q
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="!widget.pos.config.allow_qty">
+                    <button class="mode-button" style="visibility: hidden">Qty
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    q
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="widget.pos.config.allow_numpad">
+                    <button style="width:50px;" class="input-button number-char">4</button>
+                    <button style="width:50px;" class="input-button number-char">5</button>
+                    <button style="width:50px;" class="input-button number-char">6</button>
+                </t>
+                <t t-if="!widget.pos.config.allow_numpad">
+                    <button class="input-button number-char" style="visibility: hidden">4</button>
+                    <button class="input-button number-char" style="visibility: hidden">5</button>
+                    <button class="input-button number-char" style="visibility: hidden">6</button>
+                </t>
+                <t t-if="widget.pos.config.allow_discount">
+                    <button style="width:50px;" class="mode-button" data-mode='discount'>Disc
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    d
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="!widget.pos.config.allow_discount">
+                    <button class="mode-button" style="visibility: hidden">Disc
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    d
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="widget.pos.config.allow_numpad">
+                    <button style="width:50px;" class="input-button number-char">7</button>
+                    <button style="width:50px;" class="input-button number-char">8</button>
+                    <button style="width:50px;" class="input-button number-char">9</button>
+                </t>
+                <t t-if="!widget.pos.config.allow_numpad">
+                    <button class="input-button number-char" style="visibility: hidden">7</button>
+                    <button class="input-button number-char" style="visibility: hidden">8</button>
+                    <button class="input-button number-char" style="visibility: hidden">9</button>
+                </t>
+                <t t-if="widget.pos.config.allow_price">
+                    <button style="width:50px;" class="mode-button" data-mode='price'>Price
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    p
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="!widget.pos.config.allow_price">
+                    <button class="mode-button" style="visibility: hidden">Price
+                        <t t-if="widget.pos.config.keyboard_event">
+                            <li>
+                                <span class="button_key">
+                                    <i class="fa fa-keyboard"></i>
+                                    p
+                                </span>
+                            </li>
+                        </t>
+                    </button>
+                </t>
+                <t t-if="widget.pos.config.allow_numpad">
+                    <button style="width:50px;" class="input-button numpad-minus" >+/-</button>
+                    <button style="width:50px;" class="input-button number-char">0</button>
+                    <button style="width:50px;" class="input-button number-char">.</button>
+                </t>
+                <t t-if="!widget.pos.config.allow_numpad">
+                    <button class="input-button numpad-minus" style="visibility: hidden">+/-</button>
+                    <button class="input-button number-char" style="visibility: hidden">0</button>
+                    <button class="input-button number-char" style="visibility: hidden">.</button>
+                </t>
+                <t t-if="widget.pos.config.allow_remove_line">
+                    <button style="width:50px;" class="input-button numpad-backspace">
+                        <img style="pointer-events: none;" src="/pos_retail/static/src/icons/trash.png" width="24" height="21" />
+                    </button>
+                </t>
+                <t t-if="!widget.pos.config.allow_remove_line">
+                    <button class="input-button numpad-backspace" style="visibility: hidden">
+                        <img style="pointer-events: none;" src="/pos_retail/static/src/icons/trash.png" width="24" height="21" />
+                    </button>
+                </t>
+            </div>
+        </t>
+    </t>
+
+    <t t-extend="OrderWidget">
+        <t t-jquery="div[class*='find_customer']" t-operation="replace">
+        </t>
+    </t>
+</templates>
