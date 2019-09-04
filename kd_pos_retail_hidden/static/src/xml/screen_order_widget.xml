@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    
+
     <t t-extend="ProductScreenWidget">
         <t t-jquery="div[class*='leftpane']" t-operation="replace">
             <div style="width:350px;" class="leftpane">
@@ -287,4 +287,26 @@
         <t t-jquery="div[class*='find_customer']" t-operation="replace">
         </t>
     </t>
+
+    <t t-extend="pos_ticket_review">
+        <t t-jquery="table[class*='receipt-orderlines']" t-operation="after">
+            <t t-if="order.note">
+                <br/>
+				<div>
+					<div class='entry note'>
+						<span class="label">Note:</span>
+						<span class='order_note'><span class="value"><t t-esc="order.note" /></span></span>
+					</div>
+				</div>
+			</t>
+        </t>
+        <t t-jquery="div[class*='receipt-user']" t-operation="after">
+            <t t-if="table">
+				<div class="receipt-user">
+                    Table: <t t-esc="table.name"/><br />
+                </div>
+			</t>
+        </t>
+    </t>
+
 </templates>
