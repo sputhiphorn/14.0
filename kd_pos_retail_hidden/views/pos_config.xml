@@ -6,9 +6,6 @@
             <field name="model">pos.config</field>
             <field name="inherit_id" ref="pos_retail.pos_config_retail"/>
             <field name="arch" type="xml">
-                <!--<xpath expr="//notebook" position="after">
-                  <fields name="cause_perte"/>
-                </xpath>-->
                 <xpath expr="//notebook" position="replace">
                     <notebook>
                         <page string="Sync between sessions">
@@ -408,6 +405,23 @@
                                     </group>
                                 </group>
                             </div>
+                        </page>
+                        <page string="Hide/Show Button">
+                            <group>
+                                <field name="allow_lock_button"/>
+                                <field name="allow_report_button"/>
+                                <field name="allow_sync_data"/>
+                                <field name="allow_show_list"/>
+                                <field name="allow_delete"/>
+                            </group>
+                            <br/>
+                            <group>
+                                <field name="allow_remove_pos_cache"/>
+                                <field name="allow_sync_orders"/>
+                                <field name="allow_combo_item_add_lot"/>
+                                <field name="allow_set_seller"/>
+                                <field name="allow_set_fiscal_position"/>
+                            </group>
                         </page>
                     </notebook>
                 </xpath>

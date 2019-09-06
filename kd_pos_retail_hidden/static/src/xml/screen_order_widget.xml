@@ -309,4 +309,68 @@
         </t>
     </t>
 
+    <t t-extend="attribute_variant_list">
+        <t t-jquery="t[t-if*='attribute_ids']" t-operation="replace">
+            <t t-if="attribute_ids">
+                <t t-foreach="attribute_ids" t-as="attribute_id">
+                    <t t-set="variants" t-value="variants_by_product_attribute_id[attribute_id]"/>
+                    <t t-set="attribute" t-value="widget.pos.product_attribute_by_id[attribute_id]"/>
+                    <t t-set="multi_choice" t-value="attribute.multi_choice"/>
+                    <span class="label voucher-label"><t t-esc="attribute.name"/></span>
+                    <t t-if="multi_choice === true">
+                        <t t-foreach="variants" t-as="variant">
+                            <t t-if="variant.selected">
+                                <span class='left_button variant item-selected' t-att-data-id="variant.id">
+                                    <div class="button-icon">
+                                        <img src="/pos_retail/static/src/icons/tag.png" class="pos_logo"/>
+                                    </div>
+                                    <div class="button-name">
+                                        <t t-esc="variant.value_id[1].split(':')[1]"/>
+                                        <!--with a <t t-esc="widget.format_currency(variant.price_extra, 'Price Extra')"/>-->
+                                    </div>
+                                </span>
+                            </t>
+                            <t t-if="!variant.selected">
+                                <span class='left_button variant' t-att-data-id="variant.id">
+                                    <div class="button-icon">
+                                        <img src="/pos_retail/static/src/icons/tag.png" class="pos_logo"/>
+                                    </div>
+                                    <div class="button-name">
+                                        <t t-esc="variant.value_id[1].split(':')[1]"/>
+                                        <!--with a <t t-esc="widget.format_currency(variant.price_extra, 'Price Extra')"/>-->
+                                    </div>
+                                </span>
+                            </t>
+                        </t>
+                    </t>
+                    <t t-if="multi_choice === false">
+                        <t t-foreach="variants" t-as="variant">
+                            <t t-if="variant.selected">
+                                <div class="container radio-selected">
+                                    <span class="price-tag"  style="float: left">
+                                        <t t-esc="variant.value_id[1]"/>
+                                        - <t t-esc="widget.format_currency(variant.price_extra, 'Price Extra')"/>
+                                    </span>
+                                    <input type="radio" class="radio-check" t-att-data-id="variant.id" checked="checked" t-att-name="attribute.name" style="width:30px; box-shadow:none"/>
+                                    <span class="checkmark"></span>
+                                </div>
+                            </t>
+                            <t t-if="!variant.selected">
+                                <div class="container" t-att-data-id="variant.id">
+                                    <span class="price-tag" style="float: left">
+                                        <t t-esc="variant.value_id[1]"/>
+                                        - <t t-esc="widget.format_currency(variant.price_extra, 'Price Extra')"/>
+                                    </span>
+                                    <input type="radio" class="radio-check" t-att-data-id="variant.id" t-att-name="attribute.name" style="width:30px; box-shadow:none"/>
+                                    <span class="checkmark"></span>
+                                </div>
+                            </t>
+                        </t>
+                    </t>
+                    <br/>
+                </t>
+            </t>
+        </t>
+    </t>
+
 </templates>
