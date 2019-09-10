@@ -111,23 +111,50 @@
 			<br />
 			<table class='receipt-paymentlines'>
 				<t t-foreach="paymentlines" t-as="line">
-					<tr>
-					  <td>
-						  <t t-esc="line.name"/>
-					  </td>
-					  <td class="pos-right-align">
-						  <t t-esc="widget.format_currency(order.get_total_with_tax())"/>
-					  </td>
-				  </tr>
-				  <tr>
-					  <td>
-						  <!--<t t-esc="line.name"/>-->
-						  Tendered
-					  </td>
-					  <td class="pos-right-align">
-						  <t t-esc="widget.format_currency(line.get_amount())"/>
-					  </td>
-				  </tr>
+					<t t-set="cond" t-value="test" />
+					<t t-foreach="line.name.split(' ')" t-as="index">
+						<t t-if="index == 'Reil'">
+							<t t-set="cond" t-value="index" />
+						</t>
+					</t>
+					<t t-if="cond == 'Reil'">
+						<tr>
+						  <td>
+							  <t t-esc="line.name"/>
+						  </td>
+						  <td class="pos-right-align">
+							  <t t-esc="widget.format_currency(order.get_total_with_tax())"/>
+						  </td>
+					  </tr>
+					  <tr>
+						  <td>
+							  <!--<t t-esc="line.name"/>-->
+							  Tendered
+						  </td>
+						  <td class="pos-right-align">
+							  <t t-esc="widget.format_currency_no_symbol(line.get_amount() * order.exchange_rate) + '៛'"/>
+						  </td>
+					  </tr>
+					</t>
+					<t t-else="">
+						<tr>
+							  <td>
+								  <t t-esc="line.name"/>
+							  </td>
+							  <td class="pos-right-align">
+								  <t t-esc="widget.format_currency(order.get_total_with_tax())"/>
+							  </td>
+						  </tr>
+						  <tr>
+							  <td>
+								  <!--<t t-esc="line.name"/>-->
+								  Tendered
+							  </td>
+							  <td class="pos-right-align">
+								  <t t-esc="widget.format_currency(line.get_amount())"/>
+							  </td>
+						  </tr>
+					</t>
 				</t>
 			</table>
 			<table class='receipt-change'>
@@ -145,7 +172,7 @@
 					</div>
 				</div>
 			</t>
-			<div align="center" style="font-size: 11px;">All our prices are in US dollars inclusive VAT</div>
+			<div align="center" style="font-size: 11px;">All our prices are in US dollars including VAT</div>
 			<div align="center">Thank You Please Come Again</div>
 			<t t-if="receipt.footer">
 				<div align="center" style="margin-top: 3px;font-size=12px">
