@@ -12,9 +12,7 @@ odoo.define('pos_extend.order', function (require) {
     models.Order = models.Order.extend({
         initialize: function (attributes, options) {
             _super_Order.initialize.apply(this, arguments);
-
-        },      
-        
+        },
         init_from_JSON: function (json) {
             var res = _super_Order.init_from_JSON.apply(this, arguments);
             if (json.ean13) {
@@ -43,21 +41,40 @@ odoo.define('pos_extend.order', function (require) {
                 for (var i in fean13) {
                     ean13 += fean13[i];
                 }
-                ean13 = ean13.split("");
-                var aean13 = []
-                var sean13 = ""
+                ean13 = ean13.split('');
+                var aean13 = [];
+                var sean13 = '';
                 for (var i = 0; i < ean13.length; i++) {
                     if (i < 12) {
-                        sean13 += ean13[i]
-                        aean13.push(ean13[i])
+                        sean13 += ean13[i];
+                        aean13.push(ean13[i]);
                     }
                 }
-                this.ean13 = sean13 + this.generate_ean13(aean13).toString()
+                this.ean13 = sean13 + this.generate_ean13(aean13).toString();
             }
             json.exchange_rate=this.exchange_rate;
             return json;
         },
-        export_for_printing: function(){
+        select_paymentline: function(line){
+            if(line !== this.selected_paymentline){
+                if(this.selected_paymentline){
+                    this.selected_paymentline.set_selected(false);
+                }
+                this.selected_paymentline = line;
+                if(this.selected_paymentline){
+                    if (this.selected_paymentline.cashregister.journal_id[1].toLowerCase().indexOf("reil") >= 0) {
+                        $('.select-currency').val('67');
+                    }
+                    else {
+                        $('.select-currency').val('3');
+                    }
+                    $(".select-currency").trigger("change");
+                    this.selected_paymentline.set_selected(true);
+                }
+                this.trigger('change:selected_paymentline',this.selected_paymentline);
+            }
+        },
+        export_for_printing: function() {
 	        var json = _super_Order.export_for_printing.apply(this,arguments);
 	        if (this.ean13) {
                 json.ean13 = this.ean13;
@@ -77,37 +94,36 @@ odoo.define('pos_extend.order', function (require) {
                 for (var i in fean13) {
                     ean13 += fean13[i];
                 }
-                ean13 = ean13.split("");
-                var aean13 = []
-                var sean13 = ""
+                ean13 = ean13.split('');
+                var aean13 = [];
+                var sean13 = '';
                 for (var i = 0; i < ean13.length; i++) {
                     if (i < 12) {
-                        sean13 += ean13[i]
-                        aean13.push(ean13[i])
+                        sean13 += ean13[i];
+                        aean13.push(ean13[i]);
                     }
                 }
-                this.ean13 = sean13 + this.generate_ean13(aean13).toString()
+                this.ean13 = sean13 + this.generate_ean13(aean13).toString();
             }
             json.exchange_rate=this.exchange_rate;
             return json;
 	    },
         generate_ean13: function (code) {
             if (code.length != 12) {
-                return -1
+                return -1;
             }
             var evensum = 0;
             var oddsum = 0;
             for (var i = 0; i < code.length; i++) {
                 if ((i % 2) == 0) {
-                    evensum += parseInt(code[i])
+                    evensum += parseInt(code[i]);
                 } else {
-                    oddsum += parseInt(code[i])
+                    oddsum += parseInt(code[i]);
                 }
             }
-            var total = oddsum * 3 + evensum
-            return parseInt((10 - total % 10) % 10)
+            var total = oddsum * 3 + evensum;
+            return parseInt((10 - total % 10) % 10);
         },
-        
         fix_tax_included_price: function (line) {
             _super_Order.fix_tax_included_price.apply(this, arguments);
             if (this.fiscal_position) {
@@ -117,7 +133,6 @@ odoo.define('pos_extend.order', function (require) {
                 _(taxes).each(function (tax) {
                     var line_tax = line._map_tax_fiscal_position(tax);
                     if (tax.price_include && tax.id != line_tax.id) {
-
                         mapped_included_taxes.push(tax);
                     }
                 })
@@ -138,8 +153,8 @@ odoo.define('pos_extend.order', function (require) {
 				    return sum;
 			}), 0), this.pos.currency.rounding);
 		},
-		get_total_in_other_currency:function(){
-		  return  this.get_total_with_tax() * this.exchange_rate;
+		get_total_in_other_currency: function() {
+		    return  this.get_total_with_tax() / this.exchange_rate;
 		},
         get_label_text: function () {
             var label_text = {
@@ -147,36 +162,34 @@ odoo.define('pos_extend.order', function (require) {
                 label_terminal: _t('Terminal:'),
                 label_servedby: _t('Served By:'),
                 label_date: _t('កាលបរិច្ឆេទ/Date:'),
-                label_bill: _t('លេខវិក្កយបត្រ/Bill:'),
+                label_bill: _t("លេខវិក្កយបត្រ/Bill:"),
                 label_receipt: _t('លេខវិក្កយបត្រ/Receipt:'),
-                label_table: _t('លេខតុ/Table:'),
-                label_pax: _t('ភ្ញៀវ/Pax:'),
                 label_customer: _t('អតិថិជន/Customer:'),
                 label_customerphone: _t('ទូរស័ព្ទ/M:'),
                 label_desc: _t('បរិយាយ'),
                 label_qtykh: _t('ចំនួន'),
                 label_pricekh: _t('តម្លៃ'),
-                label_totalkh: _t('សរុប'),
+                label_total: _t('សរុប'),
                 label_items: _t('ITEMS'),
                 label_qty: _t('QTY'),
                 label_price: _t('PRICE'),
                 label_amount: _t('AMOUNT'),
+                label_witha: _t('With a'),
                 label_discount: _t('% discount'),
                 label_subtotal: _t('សរុប/Subtotal:'),
-                label_discount: _t('បញ្ជុះតម្លៃ/Dis.:'),
-                label_total: _t('Total(USD):'),
-                label_grandtotalkh: _t('សរុបរួម(KHR):'),
+                label_totalkh: _t('សរុបរួម(USD):'),
+                label_totalus: _t('សរុប(KHR):'),
                 label_moneychange: _t('លុយអាប់/Change:'),
-                label_thx: _t('Thank you for visiting and supporting'),
-                label_onedollar: _t('1$:')
+                label_note: _t('Note:'),
+                label_onedollar: _t('1$:'),
+                label_thx: _t('Thank you for visiting and supporting')
             };
             return label_text;
         }
     });
     var _super_Orderline = models.Orderline.prototype;
     models.Orderline = models.Orderline.extend({
-        
-        get_item_discout: function(){
+        get_item_discout: function() {
         	var discount = this.get_unit_price() * (this.get_discount() / 100.0);
         	return discount;        	
         },
@@ -186,8 +199,7 @@ odoo.define('pos_extend.order', function (require) {
             var priceWithTax = prices['priceWithTax'];
             var tax = prices['tax'];
             var discount = priceWithTax - tax - price_unit;
-            return discount
-        },
-        
+            return discount;
+        }
     });
 });
