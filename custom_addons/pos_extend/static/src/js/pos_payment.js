@@ -18,6 +18,25 @@ PaymentScreenWidget.include({
             self.click_payment_in_other_currency();
         });
     },
+    click_paymentmethods: function(id) {
+        var cashregister = null;
+        for ( var i = 0; i < this.pos.cashregisters.length; i++ ) {
+            if ( this.pos.cashregisters[i].journal_id[0] === id ){
+                cashregister = this.pos.cashregisters[i];
+                break;
+            }
+        }
+        this.pos.get_order().add_paymentline( cashregister );
+        this.reset_input();
+        this.render_paymentlines();
+        if (cashregister.journal_id[1].toLowerCase().indexOf("reil") >= 0) {
+            $('.select-currency').val('67');
+        }
+        else {
+            $('.select-currency').val('3');
+        }
+        $(".select-currency").trigger("change");
+    },
     click_payment_in_other_currency: function(){
         var self = this;
         var convert_rate=1;
@@ -25,13 +44,13 @@ PaymentScreenWidget.include({
             convert_rate=self.pos.get_order().exchange_rate
         }
         var amount_due=self.pos.get_order().get_due();
-        var amount_in_other_currency=this.format_currency_no_symbol(amount_due* convert_rate);
+        var amount_in_other_currency=this.format_currency_no_symbol(amount_due/ convert_rate);
         if(amount_due>0){
             this.gui.show_popup('payment_pad',{
-                                'title':  'Payment In Riel ( 1$='+self.format_currency_no_symbol(convert_rate)+'៛)',
-                                'amount':"៛ "+amount_in_other_currency,
+                                'title':  'Payment In ($) ( 1$='+self.format_currency_no_symbol(convert_rate)+'៛)',
+                                'amount':"$ "+amount_in_other_currency,
                                 'after_certain':function(){
-                                    var input_amount=this.inputbuffer/convert_rate;
+                                    var input_amount=this.inputbuffer *convert_rate;
                                     self.set_payment(input_amount.toFixed(3));
                                 },
                             });
