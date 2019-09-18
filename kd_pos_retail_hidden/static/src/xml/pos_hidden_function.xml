@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-extend="remove_orders_blank_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_delete">
+                <div class="oe_status js_synch">
+                    <span class='js_msg oe_hidden'>0</span>
+                    <div class="js_connected oe_icon">
+                        <i class='fa fa-fw fa-trash oe_green' role="img" aria-label="Remove orders blank lines" title="Remove orders blank lines"></i>
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="lock_session_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_lock_button">
+                <div class="oe_status js_synch">
+                    <span class='js_msg oe_hidden'>0</span>
+                    <div class="js_connected oe_icon">
+                        <i style="color: #4caf50" class='fa fa-fw fa-unlock oe_green' role="img" aria-label="Lock screen" title="Lock screen"></i>
+                    </div>
+                    <div class="js_connecting oe_icon oe_hidden">
+                        <i style="color: #f44336" class='fa fa-fw fa-lock oe_green' role="img" aria-label="UnLock screen" title="Unlock screen"></i>
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="report_button_widget">
+        <t t-jquery="div[class*='shop_logo']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_report_button">
+                <div class="oe_status shop_logo">
+                    <img class="logo_shop_header" src="/pos_retail/static/src/icons/report.png" title="Report Analytic"/>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="sync_backend_status">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_sync_data">
+                <div class="oe_status js_synch status_sync_backend">
+                    <span class='js_msg oe_hidden'>0</span>
+                    <div class="js_connected oe_icon">
+                        <i style="color: #4CAF50" class='fa fa-fw fa-refresh' role="img" aria-label="Synchronisation Connected" title="No datas sync"></i>
+                    </div>
+                    <div class="js_connecting oe_icon notifications_coming blink oe_hidden">
+                        <i class='fa fa-fw fa-spin fa-spinner' role="img" aria-label="Synchronisation Connecting" title="Need click for sync"></i>
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="products_view_widget">
+        <t t-jquery="div[class*='js_synch']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_show_list">
+                <div class="oe_status js_synch">
+                    <span class='js_msg oe_hidden'>0</span>
+                    <div class="js_connected oe_icon">
+                        <i class='fa fa-fw fa-list oe_green' role="img" aria-label="List" title="Product List View"></i>
+                    </div>
+                    <div class="js_connecting oe_icon oe_hidden">
+                        <i style="color: #f44336" class='fa fa-fw fa-th oe_green' role="img" aria-label="Box" title="Product Box View"></i>
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+
+    <t t-extend="button_remove_pos_cache">
+        <t t-jquery="div[class*='left_button']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_remove_pos_cache">
+                <div class="left_button">
+                    <div class="button-icon">
+                        <img src="/pos_retail/static/src/icons/reset.png" class="pos_logo"/>
+                    </div>
+                    <div class="button-name">
+                        Remove POS cached
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="button_sync_orders">
+        <t t-jquery="div[class*='left_button']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_sync_orders">
+                <div class="left_button">
+                    <div class="button-icon">
+                        <img src="/pos_retail/static/src/icons/sync.png" class="pos_logo"/>
+                    </div>
+                    <div class="button-name">
+                        Sync this order
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="button_combo_item_add_lot">
+        <t t-jquery="div[class*='left_button']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_combo_item_add_lot">
+                <div class="left_button">
+                    <div class="button-icon">
+                        <img src="/pos_retail/static/src/icons/lot.png" class="pos_logo"/>
+                    </div>
+                    <div class="button-name">
+                        Add lot combo items
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="button_set_seller">
+        <t t-jquery="div[class*='left_button']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_set_seller">
+                <div class="left_button">
+                    <div class="button-icon">
+                        <i class="fa fa-user"/>
+                    </div>
+                    <div class="button-name">
+                        Set seller
+                    </div>
+                </div>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+    <t t-extend="SetFiscalPositionButton">
+        <t t-jquery="div[class*='left_button']" t-operation="replace">
+            <t t-if="widget.pos.config.allow_set_fiscal_position">
+                <t t-jquery="div[class*='control-button']" t-operation="replace">
+                    <div class="left_button">
+                        <div class="button-icon">
+                            <img src="/pos_retail/static/src/icons/accounting.png" class="pos_logo"/>
+                        </div>
+                        <div class="button-name">
+                            <t t-esc='widget.get_current_fiscal_position_name()'/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+            <t t-else=""></t>
+        </t>
+    </t>
+</templates>

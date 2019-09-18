@@ -2,7 +2,7 @@
 {
     'name': 'POS Retail Hidden Function',
     'summary': """POS Retail Hidden Function""",
-    'version': '11.0.1.0',
+    'version': '11.0.1.1',
     'description': """POS Retail Hidden Function""",
     'author': 'KhmerDev',
     'company': 'KhmerDev',
@@ -14,7 +14,7 @@
         'views/pos_config.xml',
         'views/import_library.xml'
     ],
-    # 'qweb': ['static/src/xml/*.xml'],
+    'qweb': ['static/src/xml/*.xml'],
     # 'images': ['static/description/banner.png'],
     'demo': [],
     'installable': True,
