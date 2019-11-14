@@ -7,7 +7,7 @@
     font-size: 12px !important;
     padding-bottom:30px;
     display: inline-block;
-    font-family: "Inconsolata";
+    font-family: "Arial" !important;
     border: solid 1px rgb(220,220,220);
     border-radius: 3px;
     overflow: hidden;
