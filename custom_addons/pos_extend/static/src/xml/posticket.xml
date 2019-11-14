@@ -172,8 +172,7 @@
 					</div>
 				</div>
 			</t>
-			<div align="center" style="font-size: 11px;">All our prices are in US dollars including VAT</div>
-			<div align="center">Thank You Please Come Again</div>
+			<div align="center" style="font-size: 11px;">All our prices are in US dollars including VAT</div>			
 			<t t-if="receipt.footer">
 				<div align="center" style="margin-top: 3px;font-size=12px">
 					<pre><t t-esc="receipt.footer" /></pre>
