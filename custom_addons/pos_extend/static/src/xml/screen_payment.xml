@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+     <t t-extend="PaymentScreen-Paymentmethods">
+         <t t-jquery=".paymentmethods">$(this).addClass("w-23p");</t>
+     </t>
+</templates>

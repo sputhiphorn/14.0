@@ -8,16 +8,19 @@
     </template>
     
     <template id="assets_backend" name="pos_extend assets" inherit_id="point_of_sale.assets">
-        <xpath expr="." position="inside">
+        <xpath expr="//script[last()]" position="after">
             <script type="text/javascript" src="/pos_extend/static/src/js/model.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/order.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/screens.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/payment_pad.js"></script>
             <script type="text/javascript" src="/pos_extend/static/src/js/pos_payment.js"/>
-
             <link rel="stylesheet" href="/pos_extend/static/src/css/pos_extend.css"/>
             <link rel="stylesheet" href="/pos_extend/static/src/css/payment_pad.css"/>
         </xpath>
+        <xpath expr="//script[@src='/pos_retail/static/src/js/sync_backend.js']" position="replace">
+                <script type="text/javascript" src="/pos_extend/static/src/js/sync_backend.js"/>
+        </xpath>
 
     </template>
+
 </odoo>
