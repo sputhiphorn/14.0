@@ -1,0 +1,51 @@
+.pos .pos-sale-ticket {
+    text-align: left;
+    width: 355px;
+    background-color: white;
+    margin: 8px;
+    padding: 15px;
+    font-size: 12px !important;
+    padding-bottom:30px;
+    display: inline-block;
+    font-family: "Arial" !important;
+    border: solid 1px rgb(220,220,220);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.pos .pos-sale-ticket .company_card {
+    border-bottom: 1px dashed;
+}
+.pos .pos-sale-ticket .company_info {
+    width: 100%;
+    text-align: center;
+}
+.pos .pos-sale-ticket .company_info .company_name {
+    font-size: 16px;
+    font-weight: bold;
+}
+.pos .pos-sale-ticket .company_logo {
+    width: 100%;
+    text-align: center;
+}
+
+.pos_underline{
+	text-decoration: underline;
+	padding-top: 10px;
+}
+@media print{
+    .pos .pos-sale-ticket{
+        padding: 0px;
+    }
+    .pos .pos-sale-ticket table{
+        width:95% !important;
+    }
+}
+.pos .pos-sale-ticket pre {
+	font-family: "Arial" !important;
+}
+.w-23p {
+    width: 23%;
+}
+.f13 {
+    font-size: 13px;
+}

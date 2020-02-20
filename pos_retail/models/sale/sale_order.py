@@ -27,6 +27,10 @@ class sale_order(models.Model):
         ('booked', 'Booked from POS')
     ])
 
+    def _get_invoiced(self):
+        super(sale_order, self)._get_invoiced()
+        for order in self:
+            order.update({'invoice_ids': order.invoice_ids.sorted(key='id'),'order_line': order.order_line.sorted(key='id')})
     # odoo original wrong because this is api multi
     # could not use abandoned_delay = self.website_id outside of looping orders
     @api.multi

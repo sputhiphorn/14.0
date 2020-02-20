@@ -47,8 +47,8 @@ class pos_order(models.Model):
     sale_id = fields.Many2one('sale.order', 'Sale order', readonly=1)
     booking_id = fields.Many2one('sale.order', 'Booking Order',
                                  help='This order covert from booking (quotation/sale) order', readonly=1)
-    sale_journal = fields.Many2one('account.journal', string='Sales Journal', readonly=0, related=None, )
-    location_id = fields.Many2one('stock.location', string="Location", required=True, related=None, readonly=0)
+    # sale_journal = fields.Many2one('account.journal', string='Sales Journal', readonly=0, related=None, )
+    # location_id = fields.Many2one('stock.location', string="Location", required=True, related=None, readonly=0)
     pos_branch_id = fields.Many2one('pos.branch', string='Branch', readonly=1)
     is_push_order_no_wait = fields.Boolean('Is Order no Wait')
     currency_id = fields.Many2one('res.currency', string='Currency', readonly=1, related=False)
@@ -180,25 +180,25 @@ class pos_order(models.Model):
         self.env['pos.cache.database'].insert_data(self._inherit, self.id)
         return res
 
-    def _action_create_invoice_line(self, line=False, invoice_id=False):
-        # when cashiers change tax on pos order line (pos screen)
-        # map pos.order.line to account.invoice.line
-        # map taxes of pos.order.line to account.invoice.line
-        inv_line = super(pos_order, self)._action_create_invoice_line(line, invoice_id)
-        vals = {
-            'pos_line_id': line.id
-        }
-        if not line.order_id.fiscal_position_id:
-            tax_ids = [tax.id for tax in line.tax_ids]
-            vals.update({
-                'invoice_line_tax_ids': [(6, 0, tax_ids)]
-            })
-        if line.uom_id:
-            vals.update({
-                'uom_id': line.uom_id.id
-            })
-        inv_line.write(vals)
-        return inv_line
+    # def _action_create_invoice_line(self, line=False, invoice_id=False):
+    #     # when cashiers change tax on pos order line (pos screen)
+    #     # map pos.order.line to account.invoice.line
+    #     # map taxes of pos.order.line to account.invoice.line
+    #     inv_line = super(pos_order, self)._action_create_invoice_line(line, invoice_id)
+    #     vals = {
+    #         'pos_line_id': line.id
+    #     }
+    #     if not line.order_id.fiscal_position_id:
+    #         tax_ids = [tax.id for tax in line.tax_ids]
+    #         vals.update({
+    #             'invoice_line_tax_ids': [(6, 0, tax_ids)]
+    #         })
+    #     if line.uom_id:
+    #         vals.update({
+    #             'uom_id': line.uom_id.id
+    #         })
+    #     inv_line.write(vals)
+    #     return inv_line
 
     # create 1 purchase get products return from customer
     def made_purchase_order(self):
@@ -365,7 +365,7 @@ class pos_order(models.Model):
             order_submited_ids = self.env.cr.fetchall()
             if order_submited_ids and len(order_submited_ids) > 0:
                 order_submited_id = order_submited_ids[0][0]
-                _logger.error('%s have duplcate from pos' % data['name'])
+                _logger.info('%s have duplcate from pos' % data['name'])
                 if self.sudo().browse(order_submited_id).amount_total != data['amount_total']:
                     data['name'] = data['name'] + '-Duplicate_of_OrderID_%s' % order_submited_id
             pos_session_id = data['pos_session_id']

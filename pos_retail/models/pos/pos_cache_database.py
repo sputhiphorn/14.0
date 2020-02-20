@@ -265,7 +265,7 @@ class pos_cache_database(models.Model):
             return None
 
     def remove_record(self, model, record_id):
-        _logger.warning('deleted model %s with id %s' % (model, record_id))
+        _logger.info('deleted model %s with id %s' % (model, record_id))
         records = self.sudo().search([('res_id', '=', str(record_id)), ('res_model', '=', model)])
         if records:
             records.write({

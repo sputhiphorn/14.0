@@ -61,12 +61,12 @@ class account_invoice(models.Model):
         else:
             return False
 
-    @api.multi
-    def write(self, vals):
-        res = super(account_invoice, self).write(vals)
-        for inv in self:
-            self.env['pos.cache.database'].insert_data(self._inherit, inv.id)
-        return res
+    # @api.multi
+    # def write(self, vals):
+    #     res = super(account_invoice, self).write(vals)
+    #     for inv in self:
+    #         self.env['pos.cache.database'].insert_data(self._inherit, inv.id)
+    #     return res
 
     @api.multi
     def unlink(self):
@@ -74,11 +74,11 @@ class account_invoice(models.Model):
             self.env['pos.cache.database'].remove_record(self._inherit, record.id)
         return super(account_invoice, self).unlink()
 
-    @api.model
-    def create(self, vals):
-        invoice = super(account_invoice, self).create(vals)
-        self.env['pos.cache.database'].insert_data(self._inherit, invoice.id)
-        return invoice
+    # @api.model
+    # def create(self, vals):
+    #     invoice = super(account_invoice, self).create(vals)
+    #     self.env['pos.cache.database'].insert_data(self._inherit, invoice.id)
+    #     return invoice
 
 class account_invoice_line(models.Model):
     _inherit = "account.invoice.line"

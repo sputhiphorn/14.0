@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="inherit_report_saledetails" inherit_id="point_of_sale.report_saledetails">
+        <xpath expr="//div[hasclass('page')]" position="replace">
+            <div class="page">
+
+            <div class="text-center">
+                <h2><t t-esc="label_sale_detail" /></h2>
+
+                <strong><t t-esc="date_start" t-options="{'widget': 'datetime'}"/> - <t t-esc="date_stop" t-options="{'widget': 'datetime'}"/></strong>
+            </div>
+
+            <!-- Orderlines -->
+            <h3><t t-esc="label_products" /></h3>
+            <table  class="table table-condensed">
+                <thead><tr>
+                    <th><t t-esc="label_product" /></th>
+                    <th><t t-esc="label_quantity" /></th>
+                    <th><t t-esc="label_price_unit" /></th>
+                    <th><t t-esc="label_total" /></th>
+                </tr></thead>
+                <tbody>
+                <tr t-foreach="products" t-as="line">
+                    <td><t t-esc="line['product_name']" /></td>
+                    <td>
+                        <t t-esc="line['quantity']" />
+                        <t t-if="line['uom'] != 'Unit(s)'">
+                            <t t-esc="line['uom']" />
+                        </t>
+                    </td>
+                    <td>
+                        <t t-esc="line['price_unit']" />
+                    <t t-if="line['discount'] != 0">
+                        <t t-esc="label_disc" /><t t-esc="line['discount']" />%
+                    </t>
+                    </td>
+                    <td>
+                        <t t-if="line['discount'] != 0">
+                            <t t-esc="line['quantity'] * (line['price_unit'] - (line['price_unit'] * line['discount'] / 100))" t-options="{'widget': 'float', 'precision': currency_precision}"/>
+                        </t>
+                        <t t-else="">
+                            <t t-esc="line['quantity'] * line['price_unit']" t-options="{'widget': 'float', 'precision': currency_precision}"/>
+                        </t>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br/>
+
+            <h3><t t-esc="label_payments" /></h3>
+            <table  class="table table-condensed">
+                <thead><tr>
+                    <th><t t-esc="label_name" /></th>
+                    <th><t t-esc="label_total" /></th>
+                </tr></thead>
+                <tbody>
+                <tr t-foreach="payments" t-as="payment">
+                    <td><t t-esc="payment['name']" /></td>
+                    <td><t t-esc="payment['total']" t-options="{'widget': 'float', 'precision': currency_precision}"/></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br/>
+
+            <h3><t t-esc="label_taxes" /></h3>
+            <table  class="table table-condensed">
+                <thead><tr>
+                    <th><t t-esc="label_name" /></th>
+                    <th><t t-esc="label_tax_amount" /></th>
+                    <th><t t-esc="label_base_amount" /></th>
+                </tr></thead>
+                <tbody>
+                <tr t-foreach="taxes" t-as="tax">
+                    <td><t t-esc="tax['name']" /></td>
+                    <td><t t-esc="tax['tax_amount']" t-options="{'widget': 'float', 'precision': currency_precision}"/></td>
+                    <td><t t-esc="tax['base_amount']" t-options="{'widget': 'float', 'precision': currency_precision}"/></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <br/>
+            <br/>
+
+            <strong><t t-esc="label_total" />: <t t-esc="total_paid" t-options="{'widget': 'float', 'precision': currency_precision}"/></strong>
+
+        </div>
+        </xpath>
+
+    </template>
+</odoo>
