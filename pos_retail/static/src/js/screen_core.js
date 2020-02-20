@@ -68,36 +68,15 @@ odoo.define('pos_retail.screens', function (require) {
             var items = this.$('.table-item');
             for (var i = 0; i < items.length; i++) {
                 if (parseInt($(items[i]).data()['id']) != table_id) {
-                    $(items[i]).css('background', '#fff');
+                    $(items[i]).css('background', '#ffff');
                 }
             }
         }
     });
 
-    screens.define_action_button({
-        'name': 'set_pricelist',
-        'widget': screens.set_pricelist_button,
-        'condition': function () {
-            return this.pos.pricelists.length == 1;
-        },
-    });
-
-    gui.Gui.include({
-        show_screen: function (screen_name, params, refresh, skip_close_popup) {
-            if (screen_name != 'products' || this.pos.config.mobile_responsive) {
-                $('.pos-branding').addClass('oe_hidden');
-                $('.pos .pos-rightheader').css('left', '0px');
-            } else {
-                $('.pos-branding').removeClass('oe_hidden');
-                $('.pos .pos-rightheader').css('left', '590px');
-            }
-            return this._super(screen_name, params, refresh, skip_close_popup);
-        }
-    });
-
     screens.NumpadWidget.include({
         hide_pad: function () {
-            $('.pads').animate({height: 0}, 'fast');
+            $('.subwindow-container-fix .pads').animate({height: 0}, 'fast');
             $('.numpad').addClass('oe_hidden');
             $('.show_hide_pad').toggleClass('fa-caret-down fa-caret-up');
             $('.actionpad').addClass('oe_hidden');
@@ -105,7 +84,7 @@ odoo.define('pos_retail.screens', function (require) {
             this.pos.hide_pads = true;
         },
         show_pad: function () {
-            $('.pads').animate({height: '100%'}, 'fast');
+            $('.subwindow-container-fix .pads').animate({height: '100%'}, 'fast');
             $('.mode-button').removeClass('oe_hidden');
             $('.actionpad').removeClass('oe_hidden');
             $('.pads').animate({height: '100%'}, 'fast');
@@ -146,50 +125,10 @@ odoo.define('pos_retail.screens', function (require) {
                     if (!this.pos.config.apply_validate_return_mode) {
                         return this._super(event);
                     } else {
-                        return this.pos.gui.show_popup('ask_password', {
-                            title: 'Pos pass pin ?',
-                            body: 'Please use pos security pin for unlock',
-                            confirm: function (value) {
-                                var pin;
-                                if (this.pos.config.validate_by_user_id) {
-                                    var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                    pin = user_validate['pos_security_pin']
-                                } else {
-                                    pin = this.pos.user.pos_security_pin
-                                }
-                                if (value != pin) {
-                                    return this.pos.gui.show_popup('dialog', {
-                                        title: 'Wrong',
-                                        body: 'Pos security pin not correct'
-                                    })
-                                } else {
-                                    return self.state.changeMode(newMode);
-                                }
-                            }
-                        });
+                        this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('quantity')");
                     }
                 } else {
-                    return this.pos.gui.show_popup('ask_password', {
-                        title: 'Pos pass pin ?',
-                        body: 'Please use pos security pin for unlock',
-                        confirm: function (value) {
-                            var pin;
-                            if (this.pos.config.validate_by_user_id) {
-                                var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                pin = user_validate['pos_security_pin']
-                            } else {
-                                pin = this.pos.user.pos_security_pin
-                            }
-                            if (value != pin) {
-                                return this.pos.gui.show_popup('dialog', {
-                                    title: 'Wrong',
-                                    body: 'Pos security pin not correct'
-                                })
-                            } else {
-                                return self.state.changeMode(newMode);
-                            }
-                        }
-                    });
+                    this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('quantity')");
                 }
             }
             if (newMode == 'discount' && this.pos.config.validate_discount_change) {
@@ -197,50 +136,10 @@ odoo.define('pos_retail.screens', function (require) {
                     if (!this.pos.config.apply_validate_return_mode) {
                         return this._super(val);
                     } else {
-                        return this.pos.gui.show_popup('ask_password', {
-                            title: 'Pos pass pin ?',
-                            body: 'Please use pos security pin for unlock',
-                            confirm: function (value) {
-                                var pin;
-                                if (this.pos.config.validate_by_user_id) {
-                                    var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                    pin = user_validate['pos_security_pin']
-                                } else {
-                                    pin = this.pos.user.pos_security_pin
-                                }
-                                if (value != pin) {
-                                    return this.pos.gui.show_popup('dialog', {
-                                        title: 'Wrong',
-                                        body: 'Pos security pin not correct'
-                                    })
-                                } else {
-                                    return self.state.changeMode(newMode);
-                                }
-                            }
-                        })
+                        this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('discount')");
                     }
                 } else {
-                    return this.pos.gui.show_popup('ask_password', {
-                        title: 'Pos pass pin ?',
-                        body: 'Please use pos security pin for unlock',
-                        confirm: function (value) {
-                            var pin;
-                            if (this.pos.config.validate_by_user_id) {
-                                var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                pin = user_validate['pos_security_pin']
-                            } else {
-                                pin = this.pos.user.pos_security_pin
-                            }
-                            if (value != pin) {
-                                return this.pos.gui.show_popup('dialog', {
-                                    title: 'Wrong',
-                                    body: 'Pos security pin not correct'
-                                })
-                            } else {
-                                return self.state.changeMode(newMode);
-                            }
-                        }
-                    })
+                    this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('discount')");
                 }
             }
             if (newMode == 'price' && this.pos.config.validate_price_change) {
@@ -248,51 +147,11 @@ odoo.define('pos_retail.screens', function (require) {
                     if (!this.pos.config.apply_validate_return_mode) {
                         return this._super(val);
                     } else {
-                        return this.pos.gui.show_popup('ask_password', {
-                            title: 'Pos pass pin ?',
-                            body: 'Please use pos security pin for unlock',
-                            confirm: function (value) {
-                                var pin;
-                                if (this.pos.config.validate_by_user_id) {
-                                    var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                    pin = user_validate['pos_security_pin']
-                                } else {
-                                    pin = this.pos.user.pos_security_pin
-                                }
-                                if (value != pin) {
-                                    return this.pos.gui.show_popup('dialog', {
-                                        title: 'Wrong',
-                                        body: 'Pos security pin not correct'
-                                    })
-                                } else {
-                                    return self.state.changeMode(newMode);
-                                }
-                            }
-                        });
+                        this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('price')");
                     }
 
                 } else {
-                    return this.pos.gui.show_popup('ask_password', {
-                        title: 'Pos pass pin ?',
-                        body: 'Please use pos security pin for unlock',
-                        confirm: function (value) {
-                            var pin;
-                            if (this.pos.config.validate_by_user_id) {
-                                var user_validate = this.pos.user_by_id[this.pos.config.validate_by_user_id[0]];
-                                pin = user_validate['pos_security_pin']
-                            } else {
-                                pin = this.pos.user.pos_security_pin
-                            }
-                            if (value != pin) {
-                                return this.pos.gui.show_popup('dialog', {
-                                    title: 'Wrong',
-                                    body: 'Pos security pin not correct'
-                                })
-                            } else {
-                                return self.state.changeMode(newMode);
-                            }
-                        }
-                    });
+                    this.pos._validate_by_manager("this.chrome.screens['products'].numpad.state.changeMode('price')");
                 }
             }
             return this._super(event);
@@ -315,20 +174,77 @@ odoo.define('pos_retail.screens', function (require) {
             } else {
                 this.$el.removeClass('btn-info');
             }
+        },
+        invisible: function () {
+            this.$el.addClass('oe_hidden');
+        },
+        display: function () {
+            this.$el.removeClass('oe_hidden');
         }
     });
 
     screens.ScreenWidget.include({
+        _check_is_duplicate: function (field_value, field_string, id) {
+            var partners = this.pos.db.get_partners_sorted(-1);
+            if (id) {
+                var old_partners = _.filter(partners, function (partner_check) {
+                    return partner_check['id'] != id && partner_check[field_string] == field_value;
+                });
+                if (old_partners.length != 0) {
+                    return true
+                } else {
+                    return false
+                }
+            } else {
+                var old_partners = _.filter(partners, function (partner_check) {
+                    return partner_check[field_string] == field_value;
+                });
+                if (old_partners.length != 0) {
+                    return true
+                } else {
+                    return false
+                }
+            }
+        },
+        validate_date_field: function (value, $el) {
+            if (value.match(/^\d{4}$/) !== null) {
+                $el.val(value + '-');
+            } else if (value.match(/^\d{4}\/\d{2}$/) !== null) {
+                $el.val(value + '-');
+            }
+        },
+        check_is_number: function (number) {
+            var regex = /^[0-9]+$/;
+            if (number.match(regex)) {
+                return true
+            } else {
+                return false
+            }
+        },
+        wrong_input: function (element, message) {
+            if (message) {
+                this.$("span[class='card-issue']").text(message);
+            }
+            this.$el.find(element).css({
+                'box-shadow': '0px 0px 0px 1px rgb(236, 5, 5) inset',
+                'border': 'red !important'
+            });
+        },
+        passed_input: function (element) {
+            this.$el.find(element).css({
+                'box-shadow': '0px 0px 0px 1px rgb(34, 206, 3) inset'
+            })
+        },
         show: function () {
             var self = this;
             this._super();
             $('.pos-logo').replaceWith();
-            this.pos.barcode_reader.set_action_callback('order', _.bind(this.barcode_order_return_action, this));
-            this.pos.barcode_reader.set_action_callback('fast_order_number', _.bind(this.barcode_fast_order_number, this));
+            // this.pos.barcode_reader.set_action_callback('order', _.bind(this.scan_order_and_return, this));
+            // this.pos.barcode_reader.set_action_callback('fast_order_number', _.bind(this.barcode_fast_order_number, this));
             if (this.pos.config.is_customer_screen) {
                 $('.pos .order-selector').css('display', 'none');
                 $('.pos .leftpane').css('left', '0px');
-                $('.pos .rightpane').css('left', '540px');
+                $('.pos .rightpane').css('left', '600px');
                 $('.username').replaceWith();
                 $('.js_synch').replaceWith();
                 $('.oe_icon').css("padding-right", '60px');
@@ -338,7 +254,6 @@ odoo.define('pos_retail.screens', function (require) {
                 $('.find_customer').replaceWith();
                 $('.full-content').css("top", '10px');
                 $('.show_hide_buttons').remove();
-                $('.quickly_buttons').remove();
                 $('.layout-table').replaceWith();
                 $('.buttons_pane').replaceWith();
                 $('.collapsed').replaceWith();
@@ -378,15 +293,6 @@ odoo.define('pos_retail.screens', function (require) {
             }
         },
         barcode_product_action: function (code) {
-            console.log('barcode_product_action(): ' + code);
-            /*
-                multi scanner barcode
-                controller of barcode scanner
-                Please dont change this function because
-                1) we're have multi screen and multi barcode type
-                2) at each screen we're have difference scan and parse code
-                3) default of odoo always fixed high priority for scan products
-             */
             var current_screen = this.pos.gui.get_current_screen();
             if (current_screen && current_screen == 'return_products') {
                 this.scan_return_product(code);
@@ -395,11 +301,8 @@ odoo.define('pos_retail.screens', function (require) {
                 return this._super(code)
             }
         },
-        barcode_fast_order_number: function (datas_code) {
+        scan_order_and_paid: function (datas_code) {
             if (datas_code && datas_code['type']) {
-                console.log('{scanner} ean13 code: ' + datas_code.type);
-            }
-            if (datas_code.type == 'fast_order_number') {
                 var code = datas_code['code'];
                 console.log('{scanner} code: ' + code);
                 var orders = this.pos.get('orders').models;
@@ -408,7 +311,7 @@ odoo.define('pos_retail.screens', function (require) {
                 });
                 if (order) {
                     this.pos.set('selectedOrder', order);
-                    console.log('set selected order: ' + order['name']);
+                    this.pos.gui.show_screen('payment');
                     return true;
                 } else {
                     return false
@@ -417,28 +320,36 @@ odoo.define('pos_retail.screens', function (require) {
                 return false;
             }
         },
-        barcode_order_return_action: function (datas_code) {
+        scan_order_and_return: function (datas_code) {
             if (datas_code && datas_code['type']) {
-                console.log('{scanner} ean13 code: ' + datas_code.type);
+                console.log('{scanner} return order code: ' + datas_code.code);
             }
-            if (datas_code.type == 'order') {
-                var order = this.pos.db.order_by_ean13[datas_code['code']];
-                if (!order) {
-                    return false; // could not find order
-                }
-                var order_lines = this.pos.db.lines_by_order_id[order['id']];
-                if (!order_lines) {
-                    this.barcode_error_action(datas_code);
-                    return false;
-                } else {
-                    this.gui.show_popup('popup_return_pos_order_lines', {
-                        order_lines: order_lines,
-                        order: order
-                    });
-                    return true
-                }
-            } else {
+            var ean13 = datas_code['code'];
+            if (ean13.length == 12)
+                ean13 = "0" + ean13;
+            var order = this.pos.db.order_by_ean13[ean13];
+            if (!order || order.length > 1) {
+                return false; // could not find order
+            }
+            var order_lines = this.pos.db.lines_by_order_id[order['id']];
+            if (!order_lines) {
                 return false;
+            } else {
+                this.gui.show_popup('popup_return_pos_order_lines', {
+                    title: order.name,
+                    order_lines: order_lines,
+                    order: order
+                });
+                return true
+            }
+        },
+        barcode_error_action: function (datas_code_wrong) {
+            var check_is_return_order = this.scan_order_and_return(datas_code_wrong);
+            if (!check_is_return_order) {
+                var fast_selected_order = this.scan_order_and_paid(datas_code_wrong);
+                if (!fast_selected_order) {
+                    return this._super(datas_code_wrong)
+                }
             }
         }
     });
@@ -467,31 +378,152 @@ odoo.define('pos_retail.screens', function (require) {
         renderElement: function () {
             var self = this;
             this._super();
+            this.$('.add-new-customer').click(function () {
+                self.pos.gui.show_popup('popup_create_customer', {
+                    title: 'Add customer'
+                })
+            });
+            this.$('.find-order').click(function () {
+                self.pos.show_purchased_histories();
+            });
+            this.$('.quickly_paid').click(function () {
+                if (!self.pos.config.quickly_payment_full_journal_id) {
+                    return;
+                }
+                var order = self.pos.get_order();
+                if (!order) {
+                    return;
+                }
+                if (order.orderlines.length == 0) {
+                    return self.pos.gui.show_popup('dialog', {
+                        title: 'Error',
+                        body: 'Your order lines is blank'
+                    })
+                }
+                var paymentlines = order.get_paymentlines();
+                for (var i = 0; i < paymentlines.length; i++) {
+                    paymentlines[i].destroy();
+                }
+                var register = _.find(self.pos.cashregisters, function (register) {
+                    return register['journal']['id'] == self.pos.config.quickly_payment_full_journal_id[0];
+                });
+                if (!register) {
+                    return self.pos.gui.show_popup('dialog', {
+                        title: 'Error',
+                        body: 'Your config not add quickly payment method, please add before use'
+                    })
+                }
+                var amount_due = order.get_due();
+                order.add_paymentline(register);
+                var selected_paymentline = order.selected_paymentline;
+                selected_paymentline.set_amount(amount_due);
+                order.initialize_validation_date();
+                self.pos.push_order(order);
+                self.pos.gui.show_screen('receipt');
+
+            });
             this.$('.pay').click(function () {
                 var order = self.pos.get_order();
                 order.validate_payment_order();
+                // TODO: we will process it in the future, made all screens to one screen
+                // if (self.pos.config.replace_payment_screen && !self.pos.mobile_responsive && order.orderlines.models.length) {
+                //     var payment_screen = new screens.PaymentScreenWidget(self, {});
+                //     payment_screen.replace($('.payment-screen-container'));
+                //     payment_screen.show(); // add keyboard event
+                //     $( "input" ).prop( "disabled", true );
+                //     $(".pos .pad").css( {"pointer-events": "none"});
+                //     $(".pos .pads .numpad").css( {"pointer-events": "none"});
+                //     // $(".header-row").addClass("oe_hidden");
+                //     $(".orderline").css( {"pointer-events": "none"});
+                //     $(".pos .actionpad button").css( {"pointer-events": "none"});
+                //     $(".pos .actionpad span").css( {"pointer-events": "none"});
+                //     $('.screen').addClass('hide_receipt');
+                //     $('.payment-screen').addClass('hide_receipt');
+                //     $('.product-list-scroller').addClass('oe_hidden');
+                //     $('.buttons_pane').animate({width: '0px'}, 'fast');
+                //     $('.pos .rightpane').animate({left: '440px'}, 'fast');
+                //     self.gui.show_screen('products');
+                //     $('.back_products_screen').click(function () {
+                //         $(".pos .pad").css( {"pointer-events": "auto"});
+                //         $(".pos .pads .numpad").css( {"pointer-events": "auto"});
+                //         // $(".header-row").removeClass("oe_hidden");
+                //         $(".orderline").css( {"pointer-events": "auto"});
+                //         $(".pos .actionpad button").css( {"pointer-events": "auto"});
+                //         $(".pos .actionpad span").css( {"pointer-events": "auto"});
+                //         $('.product-list-scroller').removeClass('oe_hidden');
+                //         $('.screen').removeClass('hide_receipt');
+                //         $('.payment-screen').removeClass('hide_receipt');
+                //         $('.buttons_pane').animate({width: '170px'}, 'fast');
+                //         $('.pos .rightpane').animate({left: '740px'}, 'fast');
+                //         self.pos.gui.screen_instances['products'].rerender_products_screen(self.pos.gui.chrome.widget["products_view_widget"].view_type);
+                //         $('.payment-screen-container').addClass('oe_hidden');
+                //         payment_screen.hide();
+                //     })
+                // }
+            });
+            // TODO: quickly select partner
+            this.$('.set-customer').click(function () {
+                var quickly_search_client = self.pos.config.quickly_search_client;
+                if (quickly_search_client) {
+                    self.gui.show_screen('products');
+                    self.pos.gui.show_popup('popup_selection_extend', {
+                        title: 'Select Customer',
+                        fields: ['name', 'email', 'phone', 'mobile'],
+                        sub_datas: self.pos.db.get_partners_sorted(5),
+                        sub_search_string: self.pos.db.partner_search_string,
+                        sub_record_by_id: self.pos.db.partner_by_id,
+                        sub_template: 'clients_list',
+                        sub_button: '<div class="btn btn-success pull-right go_clients_screen">Go Clients Screen</div>',
+                        sub_button_action: function () {
+                            self.pos.gui.show_screen('clientlist')
+                        },
+                        body: 'Please select one client',
+                        confirm: function (client_id) {
+                            var client = self.pos.db.get_partner_by_id(client_id);
+                            if (client) {
+                                self.gui.screen_instances["clientlist"]['new_client'] = client;
+                                self.pos.trigger('client:save_changes');
+                            }
+                        }
+                    })
+                }
             });
         }
     });
 
-    var receipt_review = screens.ScreenWidget.extend({
-        template: 'receipt_review',
+    var ReviewReceiptScreen = screens.ScreenWidget.extend({
+        template: 'ReviewReceiptScreen',
         show: function () {
             this._super();
-            var self = this;
             this.render_change();
             this.render_receipt();
             this.handle_auto_print();
+            this.auto_print_network();  // TODO: supported module pos_retail_network_printer
+        },
+        auto_print_network: function () {
+            if (this.pos.epson_printer_default) {
+                var odoo_version = this.pos.server_version;
+                var env;
+                var receipt;
+                if (odoo_version == 10)
+                    env = this.pos.gui.screen_instances['receipt'].get_receipt_data();
+                else
+                    env = this.pos.gui.screen_instances['receipt'].get_receipt_render_env();
+                if (this.pos.config.receipt_without_payment_template == 'display_price') {
+                    receipt = qweb.render('XmlReceipt', env);
+                } else {
+                    receipt = qweb.render('XmlReceiptNoPrice', env);
+                }
+                this.pos.print_network(receipt, this.pos.epson_printer_default['ip']);
+            }
         },
         handle_auto_print: function () {
             if (this.should_auto_print()) {
                 this.print();
-            } else {
-                this.lock_screen(false);
             }
         },
         should_auto_print: function () {
-            return this.pos.config.iface_print_auto && !this.pos.get_order()._printed;
+            return this.pos.config.iface_print_auto;
         },
         should_close_immediately: function () {
             return this.pos.config.iface_print_via_proxy && this.pos.config.iface_print_skip_screen;
@@ -520,31 +552,30 @@ odoo.define('pos_retail.screens', function (require) {
             this.pos.get_order()._printed = true;
         },
         print_xml: function () {
-            var env = this.get_receipt_render_env();
+            var env;
             var receipt;
+            var odoo_version = this.pos.server_version;
+            if (odoo_version == 10)
+                env = this.pos.gui.screen_instances['receipt'].get_receipt_data();
+            else
+                env = this.pos.gui.screen_instances['receipt'].get_receipt_render_env();
             if (this.pos.config.receipt_without_payment_template == 'display_price') {
                 receipt = qweb.render('XmlReceipt', env);
             } else {
-                receipt = qweb.render('xml_receipt_not_show_price', env);
+                receipt = qweb.render('XmlReceiptNoPrice', env);
             }
             this.pos.proxy.print_receipt(receipt);
             this.pos.get_order()._printed = true;
         },
         print: function () {
-            var self = this;
-
-            if (!this.pos.config.iface_print_via_proxy) { // browser (html) printing
-                this.lock_screen(true);
-                setTimeout(function () {
-                    self.lock_screen(false);
-                }, 1000);
-                this.print_web();
-            } else {    // proxy (xml) printing
+            if (this.pos.config.iface_print_via_proxy) {
                 this.print_xml();
                 this.lock_screen(false);
+            } else {
+                this.print_web();
             }
+            this.auto_print_network()
         },
-
         click_back: function () {
             this.pos.gui.show_screen('products')
         },
@@ -567,12 +598,26 @@ odoo.define('pos_retail.screens', function (require) {
             this.$('.change-value').html(this.format_currency(this.pos.get_order().get_change()));
         },
         render_receipt: function () {
-            this.$('.pos-receipt-container').html(qweb.render('pos_ticket_review', this.get_receipt_render_env()));
+            var datas = {};
+            if (this.pos.server_version != 10) {
+                datas = this.pos.gui.screen_instances['receipt'].get_receipt_render_env()
+            } else {
+                datas = this.pos.gui.screen_instances['receipt'].get_receipt_data()
+            }
+            this.$('.pos-receipt-container').html(qweb.render('PosTicket', datas));
             try {
                 var order = this.pos.get_order();
-                if (order && order['index_number_order']) {
-                    $('.barcode_receipt').removeClass('oe_hidden');
-                    JsBarcode("#barcode", order['index_number_order'], {
+                if (order && order['ean13']) {
+                    this.$('img[id="barcode"]').removeClass('oe_hidden');
+                    JsBarcode("#barcode", order['ean13'], {
+                        format: "EAN13",
+                        displayValue: true,
+                        fontSize: 18
+                    });
+                }
+                if (order.index_number_order) {
+                    this.$('img[id="barcode_order_unique"]').removeClass('oe_hidden');
+                    JsBarcode("#barcode_order_unique", order['index_number_order'], {
                         format: "EAN13",
                         displayValue: true,
                         fontSize: 18
@@ -584,5 +629,9 @@ odoo.define('pos_retail.screens', function (require) {
         }
     });
 
-    gui.define_screen({name: 'receipt_review', widget: receipt_review});
+    gui.define_screen({name: 'review_receipt', widget: ReviewReceiptScreen});
+
+    return {
+        'ReviewReceiptScreen': ReviewReceiptScreen
+    }
 });

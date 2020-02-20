@@ -1,10 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
-    <t t-name="button_set_seller">
-        <div class="left_button">
+    <t t-name="button_purchased_lines_histories">
+        <div class="left_button" title="Purchased Lines Histories Of Client">
             <div class="button-icon">
-                <i class="fa fa-user"/>
+                <i class="fa fa-list"/>
+            </div>
+            <div class="button-name">
+                Purchased Lines Histories
+            </div>
+        </div>
+    </t>
+
+    <t t-name="button_discount_sale_price">
+        <div class="left_button" title="Set Discount Sale Price">
+            <div class="button-icon">
+                <i class="fa fa-check"/>
+            </div>
+            <div class="button-name">
+                Discount Sale Price
+            </div>
+        </div>
+    </t>
+
+    <t t-name="button_set_seller">
+        <div class="left_button" title="Set Seller to Order and Lines">
+            <div class="button-icon">
+                <i class="fa fa-users"/>
             </div>
             <div class="button-name">
                 Set seller
@@ -13,20 +35,9 @@
     </t>
 
     <t t-name="button_cache_database">
-        <div class="left_button">
+        <div class="left_button" title="Remove Products And Customer Cache of Device">
             <div class="button-name">
                 Cache database
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_remove_pos_cache">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/reset.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Remove POS cached
             </div>
         </div>
     </t>
@@ -54,7 +65,7 @@
 <!--    </t>-->
 
     <t t-name="button_create_internal_transfer">
-        <div class="left_button">
+        <div class="left_button" title="Add Products And Made Internal Transfer between Locations">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/internal_transfer.png" class="pos_logo"/>
             </div>
@@ -65,7 +76,7 @@
     </t>
 
     <t t-name="button_create_purchase_order">
-        <div class="left_button">
+        <div class="left_button" title="Create Purchase Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/purchase.png" class="pos_logo"/>
             </div>
@@ -76,7 +87,7 @@
     </t>
 
     <t t-name="button_combo">
-        <div class="left_button">
+        <div class="left_button" title="Set Pack/Combo Items to Line Selected">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/combo.png" class="pos_logo"/>
             </div>
@@ -87,18 +98,18 @@
     </t>
 
     <t t-name="button_combo_item_add_lot">
-        <div class="left_button">
+        <div class="left_button" title="Set Pack/Combo Items to Line Selected">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/lot.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Add lot combo items
+                Add Lot Combo Items
             </div>
         </div>
     </t>
 
     <t t-name="button_global_discount">
-        <div class="left_button">
+        <div class="left_button" title="Set Discount % on Total Amount Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/global_discount.png" class="pos_logo"/>
             </div>
@@ -109,18 +120,18 @@
     </t>
 
     <t t-name="button_lock_unlock_order">
-        <div class="left_button">
+        <div class="left_button" title="Locked This Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/lock_order.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Lock order
+                Lock Order
             </div>
         </div>
     </t>
 
     <t t-name="button_change_unit">
-        <div class="left_button">
+        <div class="left_button" title="If Line Selected Have multi Unit of Measure, click and change to another Unit">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/checklist.png" class="pos_logo"/>
             </div>
@@ -130,41 +141,8 @@
         </div>
     </t>
 
-    <t t-name="button_line_note">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/note.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Add Line Note
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_order_note">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/note.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Add Order Note
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_order_signature">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/signature.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Signature order
-            </div>
-        </div>
-    </t>
-
     <t t-name="button_print_receipt">
-        <div class="left_button">
+        <div class="left_button" title="Print Current Order Bill before step Payment">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/bill.png" class="pos_logo"/>
             </div>
@@ -175,34 +153,12 @@
     </t>
 
     <t t-name="button_print_last_order">
-        <div class="left_button">
+        <div class="left_button" title="Print Bill of last Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/bill.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Print bill last order
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_add_variants">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/checklist.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Add variants
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_remove_variants">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/trash.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Remove variants
+                Print Bill Last Order
             </div>
         </div>
     </t>
@@ -213,7 +169,7 @@
                 <img src="/pos_retail/static/src/icons/register_payment.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Register payment
+                Register Payment
             </div>
         </div>
     </t>
@@ -224,24 +180,24 @@
                 <img src="/pos_retail/static/src/icons/tag.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Add tags
+                Add Tags
             </div>
         </div>
     </t>
 
     <t t-name="button_return_products">
-        <div class="left_button">
+        <div class="left_button" title="If Customer return back one part of Order, click it made return Products">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/refund.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Fast return
+                Fast Return
             </div>
         </div>
     </t>
 
     <t t-name="button_go_invoice_screen">
-        <div class="left_button">
+        <div class="left_button" title="Go to Invoices Screen">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/invoice.png" class="pos_logo"/>
             </div>
@@ -252,7 +208,7 @@
     </t>
 
     <t t-name="product_operation_button">
-        <div class="left_button">
+        <div class="left_button" title="Go to Products Screen, you can update name, price, ....on hand of product">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/barcode.png" class="pos_logo"/>
             </div>
@@ -320,12 +276,12 @@
     </t>
 
     <t t-name="button_print_user_card">
-        <div class="left_button">
+        <div class="left_button" title="Print User Card of current user use pos session">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/id_card.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Print user card
+                Print User Card
             </div>
         </div>
     </t>
@@ -336,7 +292,7 @@
                 <img src="/pos_retail/static/src/icons/trash.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Clean empty order
+                Clean Empty Order
             </div>
         </div>
     </t>
@@ -347,7 +303,7 @@
                 <img src="/pos_retail/static/src/icons/lock_screen.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Lock session
+                Lock Session
             </div>
         </div>
     </t>
@@ -363,28 +319,6 @@
                 </div>
             </div>
         </t>
-    </t>
-
-    <t t-name="button_set_location">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/warehouse.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                <t t-esc="widget.pos.get_location()['name']"/>
-            </div>
-        </div>
-    </t>
-
-    <t t-name="button_check_stock">
-        <div class="left_button">
-            <div class="button-icon">
-                <img src="/pos_retail/static/src/icons/warehouse.png" class="pos_logo"/>
-            </div>
-            <div class="button-name">
-                Qty available selected line
-            </div>
-        </div>
     </t>
 
     <t t-name="button_restart_session">
@@ -409,20 +343,20 @@
                         <t t-esc="widget.pos.get_order().get_medical_insurance().employee"/>
                     </t>
                     <t t-if="!widget.pos.get_order().get_medical_insurance()">
-                        Add insurance
+                        Add Insurance
                     </t>
                 </div>
             </t>
             <t t-if="!widget.pos.get_order()">
                 <div class="button-name">
-                    Add insurance
+                    Add Insurance
                 </div>
             </t>
         </div>
     </t>
 
     <t t-name="button_set_guest">
-        <div class="left_button">
+        <div class="left_button" title="Set Guest to current Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/guests.png" class="pos_logo"/>
             </div>
@@ -445,7 +379,7 @@
     </t>
 
     <t t-name="button_reset_sequence">
-        <div class="left_button">
+        <div class="left_button" title="Set sequence of order to 0">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/reset.png" class="pos_logo"/>
             </div>
@@ -456,19 +390,19 @@
     </t>
 
     <t t-name="button_change_tax">
-        <div class="left_button">
+        <div class="left_button" title="Click and adding more taxes to Line selected">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/taxes.png" class="pos_logo"/>
             </div>
             <div class="button-name">
-                Change taxes
+                Change Taxes
             </div>
         </div>
     </t>
 
     <t t-extend="OrderlineNoteButton">
         <t t-jquery="div[class*='control-button']" t-operation="replace">
-            <div class="left_button">
+            <div class="left_button"  title="Note to current Order">
                 <div class="button-icon">
                     <img src="/pos_retail/static/src/icons/note.png" class="pos_logo"/>
                 </div>
@@ -486,7 +420,7 @@
                     <img src="/pos_retail/static/src/icons/printer.png" class="pos_logo"/>
                 </div>
                 <div class="button-name">
-                    Turn on printer
+                    Turn on Printer
                 </div>
             </div>
         </t>
@@ -497,7 +431,7 @@
                     <img src="/pos_retail/static/src/icons/printer.png" class="pos_logo"/>
                 </div>
                 <div class="button-name">
-                    Turn off printer
+                    Turn off Printer
                 </div>
             </div>
         </t>

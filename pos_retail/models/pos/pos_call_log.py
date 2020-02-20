@@ -47,40 +47,17 @@ class pos_call_log(models.Model):
 
     @api.multi
     def refresh_logs(self):
-        for log in self:
+        _logger.info('Begin refresh_logs()')
+        self.env['pos.cache.database'].sudo().search([]).unlink()
+        logs = self.search([])
+        _logger.info(logs)
+        for log in logs:
             log.refresh_log()
+        self.env['pos.config'].sudo().search([]).write({'required_reinstall_cache': True})
         return True
 
     @api.model
     def refresh_log(self):
         cache_database_object = self.env['pos.cache.database']
-        call_fields = cache_database_object.get_fields_by_model(self.call_model)
-        call_domain = cache_database_object.get_domain_by_model(self.call_model)
-        call_domain.append(['id', '>=', self.min_id])
-        call_domain.append(['id', '<=', self.max_id])
-        _logger.info('Refresh log of model: %s' % self.call_model)
-        _logger.info(call_domain)
-        _logger.info(call_fields)
-        _logger.info('===============================')
-        results = self.env[self.call_model].sudo().search_read(
-            call_domain,
-            call_fields)
-        version_info = odoo.release.version_info[0]
-        if version_info == 12:
-            results = self.covert_datetime(self.call_model, results)
-        self.write({
-            'call_results': json.dumps(results),
-            'call_fields': json.dumps(call_fields),
-            'call_domain': json.dumps(call_domain),
-        })
-        return True
-
-    @api.multi
-    def refresh_call_logs(self):
-        _logger.info('========================= BEGIN refresh_call_logs ========================================')
-        logs = self.search([])
-        for log in logs:
-            log.refresh_log()
-        self.env['pos.cache.database'].search([]).unlink()
-        _logger.info('========================= END refresh_call_logs   ========================================')
+        cache_database_object.installing_datas(self.call_model, self.min_id, self.max_id)
         return True

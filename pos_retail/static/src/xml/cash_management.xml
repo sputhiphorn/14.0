@@ -94,13 +94,14 @@
               	<div>
 	                <div class="box">
 	                     <span class='label checkbox-label'>Reason <span class="input-required"> (*)</span></span>
-	                     <input class='reason' type="text" placeholder="Reason" required="Mandatory" />
+	                     <input class='reason field' name="reason" type="text" placeholder="Reason" t-att-value="widget.options.reason"/>
 	                </div>
 	                <div class="box">
 	                    <span class='label checkbox-label'>Amount <span class="input-required"> (*)</span></span>
-	                    <input class="amount" type="number" value="0.00" placeholder="Amount" required="Mandatory" />
+	                    <input class="amount field" name="amount" type="number" placeholder="Amount" t-att-value="widget.options.amount"/>
 	                </div>
                 </div>
+                <span class="card-issue"/>
                	<div class="footer">
                    	<div class="button confirm">
                        	Confirm
@@ -118,8 +119,12 @@
             <t t-if="widget.options.session">
                 <t t-value="widget.options.session" t-set="session" />
                 <div class="popup popup-text session-popup">
-                    <p class="title session-title"><t t-esc=" widget.options.title || '' " /></p>
-                    <p class="body"><t t-esc=" widget.options.body || '' " /></p>
+                    <t t-if="widget.options.title">
+                        <p class="title session-title"><t t-esc=" widget.options.title || '' " /></p>
+                    </t>
+                    <t t-if="widget.options.body">
+                        <p class="body"><t t-esc=" widget.options.body || '' " /></p>
+                    </t>
                     <div class="session_form">
                         <t t-if="session.cash_control == true">
                             <button t-attf-class="btn EndOfSession endsessionbutton highlight #{ session.state !='opened'  ? 'display-hide' : '' }">
@@ -192,13 +197,13 @@
                     <div class="footer">
                         <t t-if="session.cash_control == true">
                             <div class="pos_button_box">
-                                <span class="btn session-button PutMoneyIn">
+                                <span class="btn btn-warning session-button PutMoneyIn">
                                     <i class='fa fa-level-down' /> Put Money In
                                 </span>
-                                <span class="btn session-button TakeMoneyOut">
+                                <span class="btn btn-warning session-button TakeMoneyOut">
                                     <i class='fa fa-level-up' /> Take Money Out
                                 </span>
-                                <span class="btn session-button SetClosingBalance" value="end">
+                                <span class="btn btn-warning session-button SetClosingBalance" value="end">
                                     <i class='fa fa-money' /> Set Closing Balance
                                 </span>
                             </div>

@@ -20,6 +20,17 @@ class pos_sale_report(models.TransientModel):
     _name = 'pos.sale.report'
     _description = "Report of sale"
 
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        report = self.env['ir.actions.report']._get_report_from_name('pos_retail.pos_sale_report_template')
+        if data and data.get('form') and data.get('form').get('session_ids'):
+            docids = self.env['pos.session'].browse(data['form']['session_ids'])
+        return {'doc_ids': self.env['pos.sale.report'].browse(data['ids']),
+                'doc_model': report.model,
+                'docs': self.env['pos.session'].browse(data['form']['session_ids']),
+                'data': data,
+                }
+
     @api.multi
     def print_receipt(self):
         datas = {'ids': self._ids,

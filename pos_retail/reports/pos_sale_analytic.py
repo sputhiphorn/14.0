@@ -11,7 +11,7 @@ class pos_sale_analytic(models.Model):
 
     name = fields.Char('Name')
     user_id = fields.Many2one('res.users', 'Sale person', readonly=1)
-    date = fields.Date(string='Order Date', readonly=1)
+    date = fields.Datetime(string='Order Date', readonly=1)
     product_id = fields.Many2one(
         'product.product', string='Product Variant', readonly=1)
     product_categ_id = fields.Many2one(
@@ -31,7 +31,7 @@ class pos_sale_analytic(models.Model):
         select = """SELECT min(sol.id)*-1 AS id,
             so.name as name,
             so.user_id as user_id,
-            so.date_order::date AS date,
+            so.date_order AS date,
             sol.product_id AS product_id,
             pt.categ_id AS product_categ_id,
             pt.pos_categ_id AS pos_categ_id,
@@ -54,7 +54,7 @@ class pos_sale_analytic(models.Model):
         select = """SELECT min(pol.id) AS id,
             po.name as name,
             po.user_id as user_id,
-            po.date_order::date AS date,
+            po.date_order AS date,
             pol.product_id AS product_id,
             pt.categ_id AS product_categ_id,
             pt.pos_categ_id AS pos_categ_id,

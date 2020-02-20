@@ -51,6 +51,9 @@ odoo.define('pos_retail.remote_sessions', function (require) {
                                 });
                                 return status;
                             }
+                            if (value['reload_session']) {
+                                this.pos.reload_pos()
+                            }
                             if (value['close_session']) {
                                 this.pos.gui.close()
                             }

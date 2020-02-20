@@ -1,6 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
+    <t t-name="popup_invoice_register_payment">
+        <div class="modal-dialog">
+            <div class="popup popup-textinput" style="height: 35%">
+                <div class="card">
+                    <div class="card-content">
+                        <h4 class="card-title">
+                            <t t-if="widget.options.invoice">
+                                Invoice Number: <t t-esc="widget.options.invoice.number"/>
+                            </t>
+                        </h4>
+                        <t t-if="widget.options.invoice">
+                            <div class="row">
+                                <label class="label voucher-label">Residual</label>
+                                <div class="col-sm-10">
+                                    <div class="form-group label-floating is-empty">
+                                        <input type="number" class="form-control field" t-att-value="widget.options.invoice.residual" name="residual"/>
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <span class="label voucher-label">Payment Journal</span>
+                                <div class="col-sm-10">
+                                     <select class='form-control voucher-select field' name='journal_id'>
+                                        <t t-if="widget.pos.cashregisters">
+                                            <t t-foreach='widget.pos.cashregisters' t-as='cashregister'>
+                                                <option t-att-value='cashregister.journal_id[0]'>
+                                                    <t t-esc='cashregister.journal_id[1]'/>
+                                                </option>
+                                            </t>
+                                        </t>
+                                    </select>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                    <span class="card-issue"/>
+                    <div class="form-footer text-center">
+                        <div class="btn btn-success pull-right confirm">
+                            Register
+                        </div>
+                        <div class="btn btn-danger pull-left cancel">
+                            Close
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
     <t t-name="invoices_screen">
         <div class="clientlist-screen screen">
             <div class="full_width screen-content">

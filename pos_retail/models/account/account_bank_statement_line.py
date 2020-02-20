@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
+from psycopg2.extensions import AsIs
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -8,6 +9,12 @@ class account_bank_statement_line(models.Model):
     _inherit = "account.bank.statement.line"
 
     voucher_id = fields.Many2one('pos.voucher', 'Voucher', readonly=1)
+    pos_session_id = fields.Many2one('pos.session', 'POS Session')
+    pos_cash_type = fields.Selection([
+        ('none', 'None'),
+        ('in', 'In'),
+        ('out', 'Out')
+    ], string='POS Cash Type', default='none')
 
     def fast_counterpart_creation(self):
         from_pos = False

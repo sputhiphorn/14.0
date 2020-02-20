@@ -36,7 +36,7 @@ odoo.define('pos_retail.pos_backend', function (require) {
                                 _t(data['message']));
                         }
                         if (data['open_session']) {
-                            window.open('/pos/web', '_self');
+                            window.open('/pos/web?config_id=' + data['config_id'], '_self');
                         }
                         if (data['remove_cache']) {
                             this.web_client.remove_indexed_db();

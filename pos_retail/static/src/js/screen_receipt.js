@@ -1,7 +1,6 @@
 "use strict";
 odoo.define('pos_retail.screen_receipt', function (require) {
 
-    var models = require('point_of_sale.models');
     var screens = require('point_of_sale.screens');
     var core = require('web.core');
     var rpc = require('pos.rpc');
@@ -21,12 +20,16 @@ odoo.define('pos_retail.screen_receipt', function (require) {
                 }
             });
         },
+        print: function () {
+            this._super();
+            this.auto_print_network();
+        },
         show: function () {
             this._super();
             try {
                 var order = this.pos.get_order();
                 if (this.pos.config.barcode_receipt && order && order['ean13']) {
-                    $('.barcode_receipt').removeClass('oe_hidden');
+                    this.$('img[id="barcode"]').removeClass('oe_hidden');
                     JsBarcode("#barcode", order['ean13'], {
                         format: "EAN13",
                         displayValue: true,
@@ -35,6 +38,24 @@ odoo.define('pos_retail.screen_receipt', function (require) {
                 }
             } catch (error) {
                 console.error(error)
+            }
+            this.auto_print_network();
+        },
+        auto_print_network: function () {
+            if (this.pos.epson_printer_default && this.pos.get_order()) {
+                var odoo_version = this.pos.server_version;
+                var env;
+                var receipt;
+                if (odoo_version == 10)
+                    env = this.pos.gui.screen_instances['receipt'].get_receipt_data();
+                else
+                    env = this.pos.gui.screen_instances['receipt'].get_receipt_render_env();
+                if (this.pos.config.receipt_without_payment_template == 'display_price') {
+                    receipt = qweb.render('XmlReceipt', env);
+                } else {
+                    receipt = qweb.render('XmlReceiptNoPrice', env);
+                }
+                this.pos.print_network(receipt, this.pos.epson_printer_default['ip']);
             }
         },
         render_change: function () {
@@ -59,10 +80,12 @@ odoo.define('pos_retail.screen_receipt', function (require) {
             if (this.pos.config.category_wise_receipt) {
                 for (var i = 0; i < orderlines.length; i++) {
                     var line = orderlines[i];
-                    var pos_categ_id = line['product']['pos_categ_id']
-                    if (pos_categ_id && pos_categ_id.length == 2) {
-                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0])
-                        var category = this.pos.db.category_by_id[root_category_id]
+                    var line_print = line.export_for_printing();
+                    line['product_name_wrapped'] = line_print['product_name_wrapped'];
+                    var pos_categ_id = line['product']['pos_categ_id'];
+                    if (pos_categ_id && pos_categ_id.length == 2 && order.get_root_category_by_category_id(pos_categ_id[0]) && this.pos.db.category_by_id[order.get_root_category_by_category_id(pos_categ_id[0])]) {
+                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0]);
+                        var category = this.pos.db.category_by_id[root_category_id];
                         var category_name = category['name'];
                         if (!orderlines_by_category_name[category_name]) {
                             orderlines_by_category_name[category_name] = [line];
@@ -98,8 +121,7 @@ odoo.define('pos_retail.screen_receipt', function (require) {
         },
 
         get_receipt_render_env: function () { // function only for v11 or bigger than 11
-            var data_print;
-            data_print = this._super();
+            var data_print = this._super();
             var orderlines_by_category_name = {};
             var order = this.pos.get_order();
             var orderlines = order.orderlines.models;
@@ -107,10 +129,12 @@ odoo.define('pos_retail.screen_receipt', function (require) {
             if (this.pos.config.category_wise_receipt) {
                 for (var i = 0; i < orderlines.length; i++) {
                     var line = orderlines[i];
-                    var pos_categ_id = line['product']['pos_categ_id']
-                    if (pos_categ_id && pos_categ_id.length == 2) {
-                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0])
-                        var category = this.pos.db.category_by_id[root_category_id]
+                    var line_print = line.export_for_printing();
+                    line['product_name_wrapped'] = line_print['product_name_wrapped'][0];
+                    var pos_categ_id = line['product']['pos_categ_id'];
+                    if (pos_categ_id && pos_categ_id.length == 2 && order.get_root_category_by_category_id(pos_categ_id[0]) && this.pos.db.category_by_id[order.get_root_category_by_category_id(pos_categ_id[0])]) {
+                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0]);
+                        var category = this.pos.db.category_by_id[root_category_id];
                         var category_name = category['name'];
                         if (!orderlines_by_category_name[category_name]) {
                             orderlines_by_category_name[category_name] = [line];
@@ -146,20 +170,37 @@ odoo.define('pos_retail.screen_receipt', function (require) {
             return data_print
         },
         store_last_receipt: function (receipt) {
-            this.pos.posbox_report_xml = receipt;
+            this.pos.report_xml = receipt;
         },
         auto_next_screen: function () {
-            if (this.pos.config.auto_nextscreen_when_validate_payment && !this.pos.config.iface_print_via_proxy) {
+            var self = this;
+            if (this.pos.config.iface_print_via_proxy) {
+                return true;
+            } else {
                 if (this.pos.config.auto_print_web_receipt) {
-                    this.print_web();
+                    setTimeout(function () {
+                        self.print_web();
+                    }, 500)
                 }
-                this.pos.get_order().finalize();
+                if (this.pos.config.auto_nextscreen_when_validate_payment && this.pos.get_order() && !this.pos.get_order().temporary) {
+                    setTimeout(function () {
+                        var current_screen = self.pos.gui.get_current_screen();
+                        var order = self.pos.get_order();
+                        if (order && current_screen == 'receipt') {
+                            self.pos.get_order().finalize();
+                        }
+                    }, 500) // TODO: wating 1 second for pos render barcode
+                }
             }
         },
         print_xml: function () {
             var self = this;
-            if (this.pos.config.receipt_invoice_number) {
+            var odoo_version = this.pos.server_version;
+            if (odoo_version == 10)
+                this.receipt_data = this.get_receipt_data();
+            else
                 self.receipt_data = this.get_receipt_render_env();
+            if (this.pos.config.receipt_invoice_number) {
                 var order = this.pos.get_order();
                 if (this.pos.config.invoice_offline) {
                     this.pos.gui.show_popup('dialog', {
@@ -190,23 +231,13 @@ odoo.define('pos_retail.screen_receipt', function (require) {
                     } else {
                         self.pos.proxy.print_receipt(receipt);
                     }
+                    self.pos.get_order()._printed = true;
                 });
             } else {
-                this._super();
-                if (this.pos.server_version == 10) {
-                    var env = {
-                        widget: this,
-                        pos: this.pos,
-                        order: this.pos.get_order(),
-                        receipt: this.pos.get_order().export_for_printing(),
-                        paymentlines: this.pos.get_order().get_paymentlines()
-                    };
-                    var receipt = qweb.render('XmlReceipt', env);
-                    this.store_last_receipt(receipt);
-                } else {
-                    var receipt = qweb.render('XmlReceipt', this.get_receipt_render_env());
-                    this.store_last_receipt(receipt);
-                }
+                var receipt = qweb.render('XmlReceipt', this.receipt_data);
+                this.store_last_receipt(receipt);
+                this.pos.proxy.print_receipt(receipt);
+                this.pos.get_order()._printed = true;
             }
         },
         render_receipt: function () {
@@ -216,7 +247,7 @@ odoo.define('pos_retail.screen_receipt', function (require) {
             this._super();
             if (this.pos.server_version == 10) { // save last receipt
                 var order = this.pos.get_order();
-                this.pos.report_xml = qweb.render('PosTicket', {
+                this.pos.report_html = qweb.render('PosTicket', {
                     widget: this,
                     order: order,
                     receipt: order.export_for_printing(),
@@ -224,7 +255,7 @@ odoo.define('pos_retail.screen_receipt', function (require) {
                     paymentlines: order.get_paymentlines(),
                 })
             } else { // save last receipt for v11 and higher
-                this.pos.report_xml = qweb.render('PosTicket', this.get_receipt_render_env());
+                this.pos.report_html = qweb.render('PosTicket', this.get_receipt_render_env());
             }
             if (!this.pos.config.iface_print_via_proxy && this.pos.config.receipt_invoice_number && order.is_to_invoice()) {
                 var invoiced = new $.Deferred();
@@ -256,9 +287,9 @@ odoo.define('pos_retail.screen_receipt', function (require) {
                     }
                     self.auto_next_screen();
                     invoiced.resolve();
-                }).fail(function (type, error) {
+                }).fail(function (error) {
                     invoiced.reject(error);
-                    return self.pos.query_backend_fail(type, error);
+                    return self.pos.query_backend_fail(error);
                 });
                 return invoiced;
             } else {

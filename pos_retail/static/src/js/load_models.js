@@ -1,13 +1,10 @@
 /*
     This module create by: thanhchatvn@gmail.com
-    License: OPL-1
-    Please do not modification if i'm not accepted
  */
 odoo.define('pos_retail.load_models', function (require) {
     var models = require('point_of_sale.models');
     var time = require('web.time');
-    var rpc = require('pos.rpc');
-
+    var Session = require('web.Session');
     var exports = {};
     var Backbone = window.Backbone;
     var bus = require('pos_retail.core_bus');
@@ -29,7 +26,7 @@ odoo.define('pos_retail.load_models', function (require) {
                     if (channel == 'pos.sync.pricelists') {
                         var pricelists_model = _.filter(this.pos.models, function (model) {
                             return model.pricelist;
-                        })
+                        });
                         if (pricelists_model) {
                             var first_load = this.pos.load_server_data_by_model(pricelists_model[0]);
                             var self = this;
@@ -56,6 +53,62 @@ odoo.define('pos_retail.load_models', function (require) {
 
     var _super_PosModel = models.PosModel.prototype;
     models.PosModel = models.PosModel.extend({
+        initialize: function (session, attributes) {
+            if (this.server_version == 10) {
+                var currency_model = _.find(this.models, function (model) {
+                    return model.model && model.model == "res.currency"
+                });
+                currency_model.ids = function (self) {
+                    return [session.currency_id]
+                };
+                var pricelist_loaded = this.get_model('product.pricelist');
+                pricelist_loaded.ids = undefined;
+                pricelist_loaded.fields = [];
+                pricelist_loaded.domain = [];
+                var pricelist_loaded_super = pricelist_loaded.loaded;
+                pricelist_loaded.loaded = function (self, pricelists) {
+                    pricelist_loaded_super(self, pricelists);
+                    if (!pricelists) {
+                        console.error('Pricelist is null')
+                    }
+                    self.pricelist_by_id = {};
+                    self.default_pricelist = _.find(pricelists, {id: self.config.pricelist_id[0]});
+                    self.pricelists = pricelists;
+                    _.map(pricelists, function (pricelist) {
+                        pricelist.items = [];
+                        self.pricelist_by_id[pricelist['id']] = pricelist;
+                    });
+                };
+            }
+            if (this.server_version !== 10) {
+                var pricelist_loaded = this.get_model('product.pricelist');
+                var pricelist_loaded_super = pricelist_loaded.loaded;
+                pricelist_loaded.loaded = function (self, pricelists) {
+                    pricelist_loaded_super(self, pricelists);
+                    self.pricelist_by_id = {};
+                    _.map(pricelists, function (pricelist) {
+                        self.pricelist_by_id[pricelist['id']] = pricelist;
+                    });
+                };
+            }
+            var pos_category_model = this.get_model('pos.category');
+            if (pos_category_model) {
+                pos_category_model.domain = function (self) {
+                    if (self.config.limit_categories) {
+                        return self.config.limit_categories && self.config.iface_available_categ_ids.length ? [['id', 'in', self.config.iface_available_categ_ids]] : [];
+                    } else {
+                        return []
+                    }
+                }
+            }
+            _super_PosModel.initialize.call(this, session, attributes)
+        },
+        _get_domain_by_pos_order_period_return_days: function () {
+            var today = new Date();
+            var pos_order_period_return_days = this.config.pos_order_period_return_days;
+            today.setDate(today.getDate() - pos_order_period_return_days);
+            return ['create_date', '>=', time.date_to_str(today) + " " + time.time_to_str(today)];
+        },
         load_server_data: function () {
             var self = this;
             return _super_PosModel.load_server_data.apply(this, arguments).then(function () {
@@ -70,7 +123,7 @@ odoo.define('pos_retail.load_models', function (require) {
         {
             model: 'product.pricelist.item',
             domain: function (self) {
-                return [['pricelist_id', 'in', _.pluck(self.pricelists, 'id')]];
+                return ['|', ['pricelist_id', 'in', _.pluck(self.pricelists, 'id')], ['pricelist_id', 'in', self.config.pricelist_ids]];
             },
             condition: function (self) {
                 return self.server_version == 10;
@@ -80,97 +133,59 @@ odoo.define('pos_retail.load_models', function (require) {
                 _.each(self.pricelists, function (pricelist) {
                     pricelist_by_id[pricelist.id] = pricelist;
                 });
-
                 _.each(pricelist_items, function (item) {
                     var pricelist = pricelist_by_id[item.pricelist_id[0]];
                     pricelist.items.push(item);
                     item.base_pricelist = pricelist_by_id[item.base_pricelist_id[0]];
                 });
+                console.log('Total pricelist items: ' + pricelist_items.length);
             },
+            retail: true,
         }
     ], {
         after: 'product.pricelist'
     });
 
-
     models.load_models([
         {
-            label: 'products quantity available',
+            model: 'stock.location',
+            fields: ['name', 'location_id', 'company_id', 'usage', 'partner_id'],
+            domain: function (self) {
+                self.config.stock_location_ids.push(self.config.stock_location_id[0]);
+                return [['id', 'in', self.config.stock_location_ids]];
+            },
+            loaded: function (self, stock_locations) {
+                for (var i = 0; i < stock_locations.length; i++) {
+                    if (stock_locations[i].location_id) {
+                        stock_locations[i]['name'] = stock_locations[i].location_id[1] + ' / ' + stock_locations[i]['name']
+                    }
+                }
+                self.stock_locations = stock_locations;
+                self.stock_location_by_id = {};
+                for (var i = 0; i < stock_locations.length; i++) {
+                    self.stock_location_by_id[stock_locations[i]['id']] = stock_locations[i];
+                }
+                self.stock_location_ids = [];
+                for (var location_id in self.stock_location_by_id) {
+                    self.stock_location_ids.push(parseInt(location_id))
+                }
+            },
+            retail: true,
+        },
+        {
+            label: 'Products Stock Quantity Available',
             condition: function (self) {
                 return self.config.display_onhand;
             },
             loaded: function (self) {
-                var response = new $.Deferred();
-                rpc.query({
-                    model: 'stock.move',
-                    method: 'get_stock_datas',
-                    args: [self.config.stock_location_id[0], []],
-                    context: {}
-                }).then(function (datas) {
+                return self._get_stock_on_hand_by_location_ids([], self.stock_location_ids).done(function (datas) {
                     self.db.stock_datas = datas;
-                    response.resolve()
-                }).fail(function (error) {
-                    response.resolve(error)
-                });
-                return response;
+                })
             },
+            retail: true,
         },
     ], {
         after: 'pos.config'
-    });
-
-    models.load_models([
-        {
-            model: 'pos.config',
-            fields: [
-                'promotion_ids'
-            ],
-            domain: function (self) {
-                return [
-                    ['id', '=', self.config.id]
-                ]
-            },
-            condition: function (self) {
-                return self.config != undefined
-            },
-            promotion: true,
-            loaded: function (self, promotions) {
-                if (promotions.length) {
-                    self.config.promotion_ids = promotions[0]['promotion_ids']
-                } else {
-                    self.config.promotion_ids = []
-                }
-
-            }
-        },
-    ], {
-        before: 'pos.config'
-    });
-
-    models.load_models([
-        {
-            model: 'pos.config',
-            fields: [
-                'available_pricelist_ids'
-            ],
-            domain: function (self) {
-                return [['id', '=', self.config.id]]
-            },
-            condition: function (self) {
-                return self.server_version != 10 && self.config != undefined;
-            },
-            pricelist: true,
-            loaded: function (self, configs) {
-                if (configs.length) {
-                    self.config.available_pricelist_ids = configs[0]['available_pricelist_ids']
-                } else {
-                    self.config.available_pricelist_ids = []
-                }
-
-            }
-        },
-    ], {
-        before: 'pos.config'
     });
 
     models.load_models([
@@ -187,7 +202,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     var uom = uoms[i];
                     self.uom_by_id[uom.id] = uom;
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'uom.uom',
@@ -202,7 +218,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     var uom = uoms[i];
                     self.uom_by_id[uom.id] = uom;
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'res.users',
@@ -230,7 +247,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.sellers.push(user)
                     }
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'pos.bus',
@@ -243,7 +261,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     var bus = bus_locations[i];
                     self.bus_location_by_id[bus.id] = bus;
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'pos.tag',
@@ -257,7 +276,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     self.tag_by_id[tags[i].id] = tags[i];
                     i++;
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'pos.note',
             fields: ['name'],
@@ -269,7 +289,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     self.note_by_id[notes[i].id] = notes[i];
                     i++;
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'pos.combo.item',
             fields: ['product_id', 'product_combo_id', 'default', 'quantity', 'uom_id', 'tracking', 'required', 'price_extra'],
@@ -280,22 +301,24 @@ odoo.define('pos_retail.load_models', function (require) {
                 for (var i = 0; i < combo_items.length; i++) {
                     self.combo_item_by_id[combo_items[i].id] = combo_items[i];
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'stock.production.lot',
             fields: ['name', 'ref', 'product_id', 'product_uom_id', 'create_date', 'product_qty', 'barcode', 'replace_product_public_price', 'public_price'],
+            condition: function (self) {
+                var condition = !self.config.screen_type || self.config.screen_type != 'kitchen';
+                return condition;
+            },
+            lot: true,
             domain: function (self) {
                 return [
                     '|', ['life_date', '>=', time.date_to_str(new Date()) + " " + time.time_to_str(new Date())], ['life_date', '=', null]
                 ]
             },
             loaded: function (self, lots) {
-                if (self.lots) {
-                    self.lots = self.lots.concat(lots);
-                } else {
-                    self.lots = lots
-                }
+                self.lots = lots;
                 self.lot_by_name = {};
                 self.lot_by_barcode = {};
                 self.lot_by_id = {};
@@ -317,7 +340,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.lot_by_product_id[lot.product_id[0]].push(lot);
                     }
                 }
-            }
+            },
+            retail: true,
         },
         {
             model: 'pos.config.image',
@@ -330,7 +354,8 @@ odoo.define('pos_retail.load_models', function (require) {
             },
             loaded: function (self, images) {
                 self.images = images;
-            }
+            },
+            retail: true,
         }, {
             model: 'pos.global.discount',
             fields: ['name', 'amount', 'product_id', 'reason'],
@@ -342,7 +367,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     self.discount_by_id[discounts[i].id] = discounts[i];
                     i++;
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'stock.picking.type',
             domain: [['code', '=', 'internal']],
@@ -363,25 +389,10 @@ odoo.define('pos_retail.load_models', function (require) {
                 if (stock_picking_types.length == 0) {
                     self.config.internal_transfer = false
                 }
-            }
+            },
+            retail: true,
         },
         {
-            model: 'stock.location',
-            fields: [],
-            domain: [['usage', '=', 'internal'], ['available_in_pos', '=', true]],
-            loaded: function (self, stock_locations) {
-                for (var i = 0; i < stock_locations.length; i++) {
-                    if (stock_locations[i].location_id) {
-                        stock_locations[i]['name'] = stock_locations[i].location_id[1] + ' / ' + stock_locations[i]['name']
-                    }
-                }
-                self.stock_locations = stock_locations;
-                self.stock_location_by_id = {};
-                for (var i = 0; i < stock_locations.length; i++) {
-                    self.stock_location_by_id[stock_locations[i]['id']] = stock_locations[i];
-                }
-            },
-        }, {
             model: 'product.uom.price',
             fields: [],
             domain: [],
@@ -400,7 +411,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         }
                     }
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'product.barcode',
             fields: ['product_tmpl_id', 'quantity', 'list_price', 'uom_id', 'barcode', 'product_id'],
@@ -418,7 +430,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.barcodes_by_barcode[barcodes[i]['barcode']].push(barcodes[i]);
                     }
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'product.variant',
             fields: ['product_tmpl_id', 'attribute_id', 'value_id', 'price_extra', 'product_id', 'quantity', 'uom_id'],
@@ -438,7 +451,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.variant_by_product_tmpl_id[variant['product_tmpl_id'][0]].push(variant)
                     }
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'product.attribute',
             fields: ['name', 'multi_choice'],
@@ -452,7 +466,8 @@ odoo.define('pos_retail.load_models', function (require) {
                     var attribute = attributes[i];
                     self.product_attribute_by_id[attribute.id] = attribute;
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'pos.quickly.payment',
             fields: ['name', 'amount'],
@@ -464,195 +479,8 @@ odoo.define('pos_retail.load_models', function (require) {
                 for (var i = 0; i < quickly_datas.length; i++) {
                     self.quickly_payment_by_id[quickly_datas[i].id] = quickly_datas[i];
                 }
-            }
-        }, {
-            model: 'pos.order',
-            condition: function (self) {
-                return self.config.pos_orders_management;
             },
-            fields: [
-                'create_date',
-                'name',
-                'date_order',
-                'user_id',
-                'amount_tax',
-                'amount_total',
-                'amount_paid',
-                'amount_return',
-                'pricelist_id',
-                'partner_id',
-                'sequence_number',
-                'session_id',
-                'state',
-                'invoice_id',
-                'picking_id',
-                'picking_type_id',
-                'location_id',
-                'note',
-                'nb_print',
-                'pos_reference',
-                'sale_journal',
-                'fiscal_position_id',
-                'ean13',
-                'expire_date',
-                'is_return',
-                'voucher_id',
-                'email',
-                'sale_id',
-                'write_date'
-            ],
-            domain: [],
-            loaded: function (self, orders) {
-                self.order_ids = [];
-                for (var i = 0; i < orders.length; i++) {
-                    self.order_ids.push(orders[i].id)
-                }
-                self.db.save_pos_orders(orders);
-            }
-        }, {
-            model: 'pos.order.line',
-            fields: [
-                'name',
-                'notice',
-                'product_id',
-                'price_unit',
-                'qty',
-                'price_subtotal',
-                'price_subtotal_incl',
-                'discount',
-                'order_id',
-                'plus_point',
-                'redeem_point',
-                'promotion',
-                'promotion_reason',
-                'is_return',
-                'uom_id',
-                'user_id',
-                'note',
-                'discount_reason',
-                'create_uid',
-                'write_date',
-                'create_date',
-            ],
-            domain: [],
-            condition: function (self) {
-                return self.config.pos_orders_management;
-            },
-            loaded: function (self, order_lines) {
-                self.db.save_pos_order_line(order_lines);
-            }
-        }, {
-            model: 'account.invoice',
-            condition: function (self) {
-                return self.config.management_invoice;
-            },
-            fields: [
-                'create_date',
-                'partner_id',
-                'origin',
-                'number',
-                'payment_term_id',
-                'date_invoice',
-                'state',
-                'residual',
-                'amount_tax',
-                'amount_total',
-                'type',
-                'write_date'
-            ],
-            domain: [],
-            context: {'pos': true},
-            loaded: function (self, invoices) {
-                self.db.save_invoices(invoices);
-            }
-        },
-        {
-            model: 'account.invoice.line',
-            condition: function (self) {
-                return self.config.management_invoice;
-            },
-            fields: [
-                'invoice_id',
-                'uom_id',
-                'product_id',
-                'price_unit',
-                'price_subtotal',
-                'quantity',
-                'discount',
-                'write_date'
-            ],
-            domain: [],
-            context: {'pos': true},
-            loaded: function (self, invoice_lines) {
-                self.db.save_invoice_lines(invoice_lines);
-            }
-        },
-        {
-            model: 'sale.order',
-            fields: [
-                'create_date',
-                'name',
-                'origin',
-                'client_order_ref',
-                'state',
-                'date_order',
-                'validity_date',
-                'confirmation_date',
-                'user_id',
-                'partner_id',
-                'partner_invoice_id',
-                'partner_shipping_id',
-                'invoice_status',
-                'payment_term_id',
-                'note',
-                'amount_tax',
-                'amount_total',
-                'picking_ids',
-                'delivery_address',
-                'delivery_date',
-                'delivery_phone',
-                'book_order',
-                'payment_partial_amount',
-                'payment_partial_journal_id',
-                'write_date'
-            ],
-            domain: [],
-            condition: function (self) {
-                return self.config.booking_orders;
-            },
-            context: {'pos': true},
-            loaded: function (self, orders) {
-                self.db.save_sale_orders(orders);
-            }
-        }, {
-            model: 'sale.order.line',
-            fields: [
-                'name',
-                'discount',
-                'product_id',
-                'order_id',
-                'price_unit',
-                'price_subtotal',
-                'price_tax',
-                'price_total',
-                'product_uom',
-                'product_uom_qty',
-                'qty_delivered',
-                'qty_invoiced',
-                'tax_id',
-                'variant_ids',
-                'state',
-                'write_date'
-            ],
-            domain: [],
-            condition: function (self) {
-                return self.config.booking_orders;
-            },
-            context: {'pos': true},
-            loaded: function (self, order_lines) {
-                self.order_lines = order_lines;
-                self.db.save_sale_order_lines(order_lines);
-            }
+            retail: true,
         },
         {
             model: 'account.payment.method',
@@ -661,7 +489,8 @@ odoo.define('pos_retail.load_models', function (require) {
             context: {'pos': true},
             loaded: function (self, payment_methods) {
                 self.payment_methods = payment_methods;
-            }
+            },
+            retail: true,
         }, {
             model: 'account.payment.term',
             fields: ['name'],
@@ -669,7 +498,8 @@ odoo.define('pos_retail.load_models', function (require) {
             context: {'pos': true},
             loaded: function (self, payments_term) {
                 self.payments_term = payments_term;
-            }
+            },
+            retail: true,
         }, {
             model: 'product.cross',
             fields: ['product_id', 'list_price', 'quantity', 'discount_type', 'discount', 'product_tmpl_id'],
@@ -680,7 +510,8 @@ odoo.define('pos_retail.load_models', function (require) {
                 for (var i = 0; i < cross_items.length; i++) {
                     self.cross_item_by_id[cross_items[i]['id']] = cross_items[i];
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'medical.insurance',
             condition: function (self) {
@@ -692,7 +523,8 @@ odoo.define('pos_retail.load_models', function (require) {
             },
             loaded: function (self, insurances) {
                 self.db.save_insurances(insurances);
-            }
+            },
+            retail: true,
         }, {
             model: 'product.quantity.pack',
             fields: ['barcode', 'quantity', 'product_tmpl_id', 'public_price'],
@@ -701,7 +533,8 @@ odoo.define('pos_retail.load_models', function (require) {
             },
             loaded: function (self, quantities_pack) {
                 self.quantities_pack = quantities_pack;
-            }
+            },
+            retail: true,
         }, {
             model: 'pos.config',
             fields: [],
@@ -729,8 +562,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         }
                     }
                 }
-
-            }
+            },
+            retail: true,
         }, {
             model: 'product.packaging',
             fields: [],
@@ -752,7 +585,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.packaging_by_product_id[packaging.product_id[0]].push(packaging)
                     }
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'account.journal',
             fields: [],
@@ -773,354 +607,10 @@ odoo.define('pos_retail.load_models', function (require) {
                 for (var x = 0; x < vouchers.length; x++) {
                     self.voucher_by_id[vouchers[x].id] = vouchers[x];
                 }
-            }
-        }, {
-            model: 'pos.loyalty',
-            fields: ['name', 'product_loyalty_id', 'rounding'],
-            condition: function (self) {
-                return self.config.loyalty_id;
             },
-            domain: function (self) {
-                return [
-                    ['id', '=', self.config.loyalty_id[0]],
-                    ['state', '=', 'running'],
-                ]
-            },
-            loaded: function (self, loyalties) {
-                if (loyalties.length > 0) {
-                    self.loyalty = loyalties[0];
-                } else {
-                    self.loyalty = false;
-                }
-            }
-        }, {
-            model: 'pos.loyalty.rule',
-            fields: [
-                'name',
-                'loyalty_id',
-                'coefficient',
-                'type',
-                'product_ids',
-                'category_ids',
-                'min_amount'
-            ],
-            condition: function (self) {
-                return self.loyalty;
-            },
-            domain: function (self) {
-                return [['loyalty_id', '=', self.loyalty.id], ['state', '=', 'running']];
-            },
-            loaded: function (self, rules) {
-                self.rules = rules;
-                self.rule_ids = [];
-                self.rule_by_id = {};
-                self.rules_by_loyalty_id = {};
-                for (var i = 0; i < rules.length; i++) {
-                    self.rule_by_id[rules[i].id] = rules[i];
-                    self.rule_ids.push(rules[i].id)
-                    if (!self.rules_by_loyalty_id[rules[i].loyalty_id[0]]) {
-                        self.rules_by_loyalty_id[rules[i].loyalty_id[0]] = [rules[i]];
-                    } else {
-                        self.rules_by_loyalty_id[rules[i].loyalty_id[0]].push(rules[i]);
-                    }
-                }
-            }
-        }, {
-            model: 'pos.loyalty.reward',
-            fields: [
-                'name',
-                'loyalty_id',
-                'redeem_point',
-                'type',
-                'coefficient',
-                'discount',
-                'discount_product_ids',
-                'discount_category_ids',
-                'min_amount',
-                'gift_product_ids',
-                'resale_product_ids',
-                'gift_quantity',
-                'price_resale'
-            ],
-            condition: function (self) {
-                return self.loyalty;
-            },
-            domain: function (self) {
-                return [['loyalty_id', '=', self.loyalty.id], ['state', '=', 'running']]
-            },
-            loaded: function (self, rewards) {
-                self.rewards = rewards;
-                self.reward_by_id = {};
-                self.rewards_by_loyalty_id = {};
-                for (var i = 0; i < rewards.length; i++) {
-                    self.reward_by_id[rewards[i].id] = rewards[i];
-                    if (!self.rewards_by_loyalty_id[rewards[i].loyalty_id[0]]) {
-                        self.rewards_by_loyalty_id[rewards[i].loyalty_id[0]] = [rewards[i]];
-                    } else {
-                        self.rewards_by_loyalty_id[rewards[i].loyalty_id[0]].push([rewards[i]]);
-                    }
-                }
-            }
+            retail: true,
         },
         {
-            model: 'pos.promotion',
-            fields: [
-                'name',
-                'start_date',
-                'end_date',
-                'type',
-                'product_id',
-                'discount_lowest_price',
-                'product_ids',
-                'minimum_items',
-                'discount_first_order',
-                'special_customer_ids',
-                'promotion_birthday',
-                'promotion_birthday_type',
-                'promotion_group',
-                'promotion_group_ids',
-            ],
-            domain: function (self) {
-                return [
-                    ['state', '=', 'active'],
-                    ['start_date', '<=', time.date_to_str(new Date()) + " " + time.time_to_str(new Date())],
-                    ['end_date', '>=', time.date_to_str(new Date()) + " " + time.time_to_str(new Date())],
-                    ['id', 'in', self.config.promotion_ids]
-                ]
-            },
-            promotion: true,
-            loaded: function (self, promotions) {
-                var promotion_applied = [];
-                promotions.forEach(function (promotion) {
-                    if (self.config.promotion_ids.indexOf(promotion['id']) >= 0) {
-                        promotion_applied.push(promotion);
-                    }
-                });
-                self.promotions = promotion_applied;
-                self.promotion_by_id = {};
-                self.promotion_ids = [];
-                var i = 0;
-                while (i < promotions.length) {
-                    self.promotion_by_id[promotions[i].id] = promotions[i];
-                    self.promotion_ids.push(promotions[i].id);
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.discount.order',
-            fields: ['minimum_amount', 'discount', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, discounts) {
-                self.promotion_discount_order_by_id = {};
-                self.promotion_discount_order_by_promotion_id = {};
-                var i = 0;
-                while (i < discounts.length) {
-                    self.promotion_discount_order_by_id[discounts[i].id] = discounts[i];
-                    if (!self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]]) {
-                        self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]] = [discounts[i]]
-                    } else {
-                        self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]].push(discounts[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.discount.category',
-            fields: ['category_id', 'discount', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, discounts_category) {
-                self.promotion_by_category_id = {};
-                var i = 0;
-                while (i < discounts_category.length) {
-                    self.promotion_by_category_id[discounts_category[i].category_id[0]] = discounts_category[i];
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.discount.quantity',
-            fields: ['product_id', 'quantity', 'discount', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, discounts_quantity) {
-                self.promotion_quantity_by_product_id = {};
-                var i = 0;
-                while (i < discounts_quantity.length) {
-                    if (!self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]]) {
-                        self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]] = [discounts_quantity[i]]
-                    } else {
-                        self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]].push(discounts_quantity[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.gift.condition',
-            fields: ['product_id', 'minimum_quantity', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, gift_conditions) {
-                self.promotion_gift_condition_by_promotion_id = {};
-                var i = 0;
-                while (i < gift_conditions.length) {
-                    if (!self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]]) {
-                        self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]] = [gift_conditions[i]]
-                    } else {
-                        self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]].push(gift_conditions[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.gift.free',
-            fields: ['product_id', 'quantity_free', 'promotion_id', 'type'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, gifts_free) {
-                self.promotion_gift_free_by_promotion_id = {};
-                var i = 0;
-                while (i < gifts_free.length) {
-                    if (!self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]]) {
-                        self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]] = [gifts_free[i]]
-                    } else {
-                        self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]].push(gifts_free[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.discount.condition',
-            fields: ['product_id', 'minimum_quantity', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, discount_conditions) {
-                self.promotion_discount_condition_by_promotion_id = {};
-                var i = 0;
-                while (i < discount_conditions.length) {
-                    if (!self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]]) {
-                        self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]] = [discount_conditions[i]]
-                    } else {
-                        self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]].push(discount_conditions[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.discount.apply',
-            fields: ['product_id', 'discount', 'promotion_id', 'type'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, discounts_apply) {
-                self.promotion_discount_apply_by_promotion_id = {};
-                var i = 0;
-                while (i < discounts_apply.length) {
-                    if (!self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]]) {
-                        self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]] = [discounts_apply[i]]
-                    } else {
-                        self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]].push(discounts_apply[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.price',
-            fields: ['product_id', 'minimum_quantity', 'price_down', 'promotion_id'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, prices) {
-                self.promotion_price_by_promotion_id = {};
-                var i = 0;
-                while (i < prices.length) {
-                    if (!self.promotion_price_by_promotion_id[prices[i].promotion_id[0]]) {
-                        self.promotion_price_by_promotion_id[prices[i].promotion_id[0]] = [prices[i]]
-                    } else {
-                        self.promotion_price_by_promotion_id[prices[i].promotion_id[0]].push(prices[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.special.category',
-            fields: ['category_id', 'type', 'count', 'discount', 'promotion_id', 'product_id', 'qty_free'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, promotion_lines) {
-                self.promotion_special_category_by_promotion_id = {};
-                var i = 0;
-                while (i < promotion_lines.length) {
-                    if (!self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]]) {
-                        self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]] = [promotion_lines[i]]
-                    } else {
-                        self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]].push(promotion_lines[i])
-                    }
-                    i++;
-                }
-            }
-        }, {
-            model: 'pos.promotion.multi.buy',
-            fields: ['promotion_id', 'product_id', 'list_price', 'qty_apply'],
-            condition: function (self) {
-                return self.promotion_ids && self.promotion_ids.length > 0;
-            },
-            domain: function (self) {
-                return [['promotion_id', 'in', self.promotion_ids]]
-            },
-            promotion: true,
-            loaded: function (self, multi_buy) {
-                self.multi_buy = multi_buy;
-                self.multi_buy_by_product_id = {};
-                for (var i = 0; i < multi_buy.length; i++) {
-                    var rule = multi_buy[i];
-                    self.multi_buy_by_product_id[rule['product_id'][0]] = rule;
-                }
-            }
-        }, {
             model: 'pos.sale.extra', // load sale extra
             fields: ['product_id', 'quantity', 'list_price', 'product_tmpl_id'],
             loaded: function (self, sales_extra) {
@@ -1137,7 +627,8 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.sale_extra_by_product_tmpl_id[sale_extra['product_tmpl_id'][0]].push(sale_extra)
                     }
                 }
-            }
+            },
+            retail: true,
         }, {
             model: 'product.price.quantity', // product price quantity
             fields: ['quantity', 'price_unit', 'product_tmpl_id'],
@@ -1152,9 +643,24 @@ odoo.define('pos_retail.load_models', function (require) {
                         self.price_each_qty_by_product_tmpl_id[product_tmpl_id].push(record);
                     }
                 }
-            }
-        },
-        {
+            },
+            retail: true,
+        }, {
+            model: 'res.partner.group',
+            fields: ['name', 'image', 'pricelist_applied', 'pricelist_id', 'height', 'width'],
+            domain: function(self) {
+                return [['id', 'in', self.config.membership_ids]]
+            },
+            loaded: function (self, membership_groups) {
+                self.membership_groups = membership_groups;
+                self.membership_group_by_id = {};
+                for (var i = 0; i < membership_groups.length; i++) {
+                    var membership_group = membership_groups[i];
+                    self.membership_group_by_id[membership_group.id] = membership_group;
+                }
+            },
+            retail: true,
+        }, {
             label: 'shop logo', // shop logo
             condition: function (self) {
                 if (self.config.logo) {
@@ -1186,7 +692,6 @@ odoo.define('pos_retail.load_models', function (require) {
                     ctx.drawImage(self.company_logo, 0, 0, width, height);
 
                     self.company_logo_base64 = c.toDataURL();
-                    console.log('loaded shop logo done');
                     logo_loaded.resolve();
                 };
                 self.company_logo.onerror = function (error) {
@@ -1200,6 +705,7 @@ odoo.define('pos_retail.load_models', function (require) {
                 }
                 return logo_loaded;
             },
+            retail: true,
         },
     ]);
 

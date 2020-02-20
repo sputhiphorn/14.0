@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <template id="pos_sale_report_template">
+        <template id="pos_retail.pos_sale_report_template">
             <t t-call="web.html_container">
                 <t t-call="web.basic_layout">
                 <div class="page">
@@ -83,7 +83,7 @@
                                     Opening Total
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.cash_register_balance_start" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.cash_register_balance_start" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <tr>
@@ -103,7 +103,7 @@
                                         Net Amount
                                     </td>
                                     <td class="text-right">
-                                        <span t-esc="tax.get('net_total')" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                        <span t-esc="tax.get('net_total')" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
                                 </tr>
                                 <tr>
@@ -111,7 +111,7 @@
                                         <span t-esc="tax.get('tax_per')" />% Tax Amount
                                     </td>
                                     <td class="text-right">
-                                        <span t-esc="tax.get('tax_total')" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                        <span t-esc="tax.get('tax_total')" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
                                 </tr>
                                 <tr>
@@ -119,7 +119,7 @@
                                         Gross Amount
                                     </td>
                                     <td class="text-right">
-                                        <span t-esc="tax.get('gross_tax')" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                        <span t-esc="tax.get('gross_tax')" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                     </td>
                                 </tr>
                             </tr>
@@ -128,7 +128,7 @@
                                     Total Tax
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_total_tax()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_total_tax()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <tr>
@@ -136,7 +136,7 @@
                                     Discount Amount
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_total_discount()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_total_discount()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <tr>
@@ -144,7 +144,7 @@
                                     Gross Total
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_total_first()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_total_first()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <t t-if="o.get_user()">
@@ -153,7 +153,7 @@
                                     Gross Profit
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_gross_total()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_gross_total()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <tr>
@@ -161,7 +161,7 @@
                                     Net Gross Profit
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_net_gross_total()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_net_gross_total()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                          </t>
@@ -172,7 +172,7 @@
                                     Closing Total
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.cash_register_balance_end_real" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.cash_register_balance_end_real" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                             <tr>
@@ -180,7 +180,7 @@
                                     Total
                                 </td>
                                 <td class="text-right">
-                                    <span t-esc="o.get_total_closing()" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="o.get_total_closing()" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                         </table>
@@ -192,7 +192,7 @@
                                     </td>
                                 </t>
                                 <td class="text-right">
-                                    <span t-esc="l.get('ending_bal')" t-esc-options='{"widget": "monetary", "display_currency": "o.currency_id"}'/>
+                                    <span t-esc="l.get('ending_bal')" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                         </table>

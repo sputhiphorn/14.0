@@ -70,13 +70,13 @@
             </td>
             <td class="td-actions text-right">
                 <button type="button" rel="tooltip" class="btn btn-info btn-round quantity">
-                    <i class="material-icons">person</i>
+                    <i class="fa fa-plus">Quantity Return</i>
                 </button>
                 <button type="button" rel="tooltip" class="btn btn-success btn-round edit_amount">
-                    <i class="material-icons">edit</i>
+                    <i class="fa fa-check">Amount Return</i>
                 </button>
                 <button type="button" rel="tooltip" class="btn btn-danger btn-round remove">
-                    <i class="material-icons">close</i>
+                    <i class="fa fa-trash">Remove Item</i>
                 </button>
             </td>
         </tr>

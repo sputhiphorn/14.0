@@ -5,6 +5,7 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+
 class pos_order(models.Model):
     _inherit = "pos.order"
 
@@ -65,9 +66,38 @@ class pos_voucher(models.Model):
             'apply_type': 'fixed_amount',
             'method': 'general',
             'source': order.name,
-            'pos_order_id': order.id
+            'pos_order_id': order.id,
+            'user_id': self.env.user.id
         })
         return True
+
+    @api.multi
+    def order_return_become_voucher(self, voucher_val={}, origin='',
+                                    partner_id=None, picking_type_id=None, location_dest_id=None,
+                                    note='', pos_order_id=None, lines=[]):
+        today = datetime.today()
+        end_date = today + timedelta(days=voucher_val['period_days'])
+        val = {
+            'number': voucher_val.get('number', None) if voucher_val.get('number', None) else '',
+            'customer_id': voucher_val.get('customer_id', None),
+            'start_date': fields.Datetime.now(),
+            'end_date': end_date,
+            'state': 'active',
+            'value': voucher_val.get('value'),
+            'apply_type': voucher_val.get('apply_type', None) if voucher_val.get('apply_type',
+                                                                                 None) else 'fixed_amount',
+            'method': voucher_val.get('method', None) if voucher_val.get('method', None) else 'general',
+            'source': voucher_val.get('source'),
+            'user_id': self.env.user.id
+        }
+        voucher = self.env['pos.voucher'].sudo().create(val)
+        voucher_val.update({
+            'code': voucher.code,
+            'value': voucher.value
+        })
+        self.env['pos.order'].create_picking_return(origin, partner_id, picking_type_id,
+                                                    location_dest_id, note, pos_order_id, lines)
+        return voucher_val
 
     @api.multi
     def get_vouchers_by_order_ids(self, order_ids):
@@ -101,6 +131,7 @@ class pos_voucher(models.Model):
                         'start_date': voucher.end_date,
                         'end_date': voucher.end_date,
                         'id': voucher.id,
+                        'user_id': self.env.user.id
                     })
         return vouchers_data
 
@@ -125,11 +156,13 @@ class pos_voucher(models.Model):
     @api.model
     def get_voucher_by_code(self, code):
         vouchers = self.env['pos.voucher'].search(
-            ['|', ('code', '=', code), ('number', '=', code), ('end_date', '>=', fields.Datetime.now()), ('state', '=', 'active')])
+            ['|', ('code', '=', code), ('number', '=', code), ('end_date', '>=', fields.Datetime.now()),
+             ('state', '=', 'active')])
         if not vouchers:
             return -1
         else:
             return vouchers.read([])[0]
+
 
 class pos_voucher_use_history(models.Model):
     _name = "pos.voucher.use.history"

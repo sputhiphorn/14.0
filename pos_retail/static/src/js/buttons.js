@@ -6,39 +6,212 @@ odoo.define('pos_retail.buttons', function (require) {
     var WebClient = require('web.AbstractWebClient');
     var rpc = require('pos.rpc');
 
+    var button_purchased_lines_histories = screens.ActionButtonWidget.extend({ // combo button
+        template: 'button_purchased_lines_histories',
+        button_click: function () {
+            var self = this;
+            var order = this.pos.get_order();
+            var client = order.get_client();
+            if (!client) {
+                this.pos.gui.show_screen('clientlist');
+                this.pos.gui.show_popup('dialog', {
+                    title: 'Warning',
+                    body: 'Could not show Purchased Histories Products, required choice Client the first'
+                })
+            } else {
+                var orders = _.filter(this.pos.db.get_pos_orders(), function (order) {
+                    return (order.partner_id && order.partner_id[0] == client.id)
+                });
+                if (!orders) {
+                    this.pos.gui.show_popup('dialog', {
+                        title: 'Warning',
+                        body: 'Client never Purchase from your Shop'
+                    })
+                } else {
+                    return rpc.query({
+                        model: 'pos.order.line',
+                        method: 'get_purchased_lines_histories_by_partner_id',
+                        args:
+                            [[], client.id],
+                        context: {
+                            pos: true
+                        }
+                    }, {shadow: true}).then(function (purchased_lines) {
+                        return self.pos.gui.show_popup('popup_selection_extend', {
+                            title: 'Purchased Lines Histories of Client selected',
+                            fields: ['create_date', 'order_id', 'product_id', 'create_uid'],
+                            multi_choice: true,
+                            sub_datas: purchased_lines,
+                            sub_template: 'purchased_lines',
+                            body: 'Please select one sale person',
+                            sub_button: '<div class="btn btn-success pull-right confirm">Add Products Selected</div>',
+                            confirm: function (product_ids) {
+                                if (product_ids && product_ids.length) {
+                                    for (var index in product_ids) {
+                                        var product_id = product_ids[index]
+                                        var product = self.pos.db.product_by_id[product_id];
+                                        self.pos.get_order().add_product(product);
+                                    }
+                                }
+                            }
+                        })
+                    }).fail(function (err) {
+                        self.pos.query_backend_fail(err)
+                    });
+                }
+            }
+        }
+    });
+
+    screens.define_action_button({
+        'name': 'button_purchased_lines_histories',
+        'widget': button_purchased_lines_histories,
+        'condition': function () {
+            return true;
+        }
+    });
+
+    var button_discount_sale_price = screens.ActionButtonWidget.extend({
+        template: 'button_discount_sale_price',
+        button_click: function () {
+            var self = this;
+            var order = this.pos.get_order();
+            if (!order) {
+                return
+            }
+            var selected_line = order.get_selected_orderline();
+            if (!selected_line) {
+                return
+            }
+            var amount_with_tax = selected_line.get_price_with_tax();
+            this.gui.show_popup('number', {
+                'title': _t('Which value of discount would you apply ?'),
+                'value': self.pos.config.discount_sale_price_limit,
+                'confirm': function (discount_value) {
+                    discount_value = parseFloat(discount_value);
+                    if (amount_with_tax < discount_value) {
+                        return self.pos.gui.show_popup('dialog', {
+                            title: 'Warning',
+                            body: 'We could not set amount bigger than amount of line'
+                        })
+                    } else {
+                        if (discount_value > self.pos.config.discount_sale_price_limit) {
+                            if (self.pos.config.discount_unlock_by_manager) {
+                                var manager_validate = [];
+                                _.each(self.pos.config.manager_ids, function (user_id) {
+                                    var user = self.pos.user_by_id[user_id];
+                                    if (user) {
+                                        manager_validate.push({
+                                            label: user.name,
+                                            item: user
+                                        })
+                                    }
+                                });
+                                if (manager_validate.length == 0) {
+                                    return self.pos.gui.show_popup('confirm', {
+                                        title: 'Warning',
+                                        body: 'Could not set discount bigger than: ' + self.pos.gui.chrome.format_currency(discount_value) + ' . If is required, need manager approve but your pos not set manager users approve on Security Tab',
+                                    })
+                                }
+                                return self.pos.gui.show_popup('selection', {
+                                    title: 'Choice Manager Validate',
+                                    body: 'Only Manager can approve this Discount, please ask him',
+                                    list: manager_validate,
+                                    confirm: function (manager_user) {
+                                        if (!manager_user.pos_security_pin) {
+                                            return self.pos.gui.show_popup('confirm', {
+                                                title: 'Warning',
+                                                body: user.name + ' have not set pos security pin before. Please set pos security pin first'
+                                            })
+                                        } else {
+                                            return self.pos.gui.show_popup('ask_password', {
+                                                title: 'Pos Security Pin of Manager',
+                                                body: _t('Your staff need approve discount value is ' + self.pos.gui.chrome.format_currency(discount_value) + ', please approve'),
+                                                confirm: function (password) {
+                                                    if (manager_user['pos_security_pin'] != password) {
+                                                        self.pos.gui.show_popup('dialog', {
+                                                            title: 'Error',
+                                                            body: 'POS Security pin of ' + manager_user.name + ' not correct !'
+                                                        });
+                                                    } else {
+                                                        var taxes_ids = selected_line.product.taxes_id;
+                                                        var taxes = self.pos.taxes;
+                                                        _(taxes_ids).each(function (id) {
+                                                            var tax = _.detect(taxes, function (t) {
+                                                                return t.id === id;
+                                                            });
+                                                            if (tax) {
+                                                                selected_line.set_discount_price(discount_value, tax)
+                                                            }
+
+                                                        });
+                                                        if (taxes_ids.length == 0) {
+                                                            selected_line.set_unit_price(selected_line.price - discount_value);
+                                                            selected_line.trigger('change', selected_line);
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                })
+                            } else {
+                                return self.gui.show_popup('dialog', {
+                                    title: _t('Warning'),
+                                    body: 'You can not set discount bigger than ' + self.pos.config.discount_limit_amount + '. Please contact your pos manager and set bigger than',
+                                })
+                            }
+                        } else {
+                            var taxes_ids = selected_line.product.taxes_id;
+                            var taxes = self.pos.taxes;
+                            _(taxes_ids).each(function (id) {
+                                var tax = _.detect(taxes, function (t) {
+                                    return t.id === id;
+                                });
+                                if (tax)
+                                    selected_line.set_discount_price(discount_value, tax)
+                            });
+                            if (taxes_ids.length == 0) {
+                                selected_line.set_unit_price(selected_line.price - discount_value);
+                                selected_line.trigger('change', selected_line);
+                            }
+                        }
+                    }
+                }
+            })
+
+
+        }
+    });
+
+    screens.define_action_button({
+        'name': 'button_discount_sale_price',
+        'widget': button_discount_sale_price,
+        'condition': function () {
+            return this.pos.config.discount_sale_price && this.pos.config.discount_sale_price_limit > 0;
+        }
+    });
+
     var button_set_seller = screens.ActionButtonWidget.extend({ // combo button
         template: 'button_set_seller',
         button_click: function () {
             var self = this;
             var sellers = this.pos.sellers;
-            var list = [];
-            for (var i = 0; i < sellers.length; i++) {
-                var seller = sellers[i];
-                list.push({
-                    'label': seller['name'],
-                    'item': seller
-                })
-            }
-            if (list.length > 0) {
-                return this.pos.gui.show_popup('selection', {
-                    title: _t('Select sale person'),
-                    list: list,
-                    confirm: function (seller) {
-                        var order = self.pos.get_order();
-                        order['seller'] = seller;
-                        var orderlines = order.orderlines.models;
-                        for (var i=0; i < orderlines.length; i++) {
-                            var line = orderlines[i];
-                            line.set_sale_person(seller);
-                        }
+            return this.pos.gui.show_popup('popup_selection_extend', {
+                title: 'Select Sale Person',
+                fields: ['name', 'email', 'id'],
+                sub_datas: sellers,
+                sub_template: 'sale_persons',
+                body: 'Please select one sale person',
+                confirm: function (user_id) {
+                    var seller = self.pos.user_by_id[user_id];
+                    var order = self.pos.get_order();
+                    if (order) {
+                        var selected_line = order.get_selected_orderline();
+                        selected_line.set_sale_person(seller);
                     }
-                });
-            } else {
-                return this.pos.gui.show_popup('dialog', {
-                    title: 'Warning',
-                    body: 'Your pos config have not add sellers'
-                });
-            }
+                }
+            })
         }
     });
 
@@ -47,24 +220,6 @@ odoo.define('pos_retail.buttons', function (require) {
         'widget': button_set_seller,
         'condition': function () {
             return this.pos.config.add_sale_person && this.pos.sellers && this.pos.sellers.length >= 1;
-        }
-    });
-
-    var button_combo = screens.ActionButtonWidget.extend({ // combo button
-        template: 'button_combo',
-        button_click: function () {
-            var order = this.pos.get_order();
-            if (order && this.pos.get_order().selected_orderline) {
-                this.pos.get_order().selected_orderline.change_combo()
-            }
-        }
-    });
-
-    screens.define_action_button({
-        'name': 'button_combo',
-        'widget': button_combo,
-        'condition': function () {
-            return this.pos.combo_items && this.pos.combo_items.length > 0; // this button auto active when combo_items.length bigger than 0
         }
     });
 
@@ -159,20 +314,6 @@ odoo.define('pos_retail.buttons', function (require) {
         }
     });
 
-    var button_go_invoice_screen = screens.ActionButtonWidget.extend({
-        template: 'button_go_invoice_screen',
-        button_click: function () {
-            this.gui.show_screen('invoices');
-        },
-    });
-    screens.define_action_button({
-        'name': 'button_go_invoice_screen',
-        'widget': button_go_invoice_screen,
-        'condition': function () {
-            return this.pos.config.management_invoice == true;
-        }
-    });
-
     var button_create_purchase_order = screens.ActionButtonWidget.extend({
         template: 'button_create_purchase_order',
         button_click: function () {
@@ -222,19 +363,7 @@ odoo.define('pos_retail.buttons', function (require) {
             return this.pos.config.change_unit_of_measure;
         }
     });
-    var button_go_pos_orders_screen = screens.ActionButtonWidget.extend({ // pos orders management
-        template: 'button_go_pos_orders_screen',
-        button_click: function () {
-            this.gui.show_screen('pos_orders_screen');
-        }
-    });
-    screens.define_action_button({
-        'name': 'button_go_pos_orders_screen',
-        'widget': button_go_pos_orders_screen,
-        'condition': function () {
-            return this.pos.config.pos_orders_management == true;
-        }
-    });
+
     var button_set_tags = screens.ActionButtonWidget.extend({
         template: 'button_set_tags',
         button_click: function () {
@@ -295,129 +424,6 @@ odoo.define('pos_retail.buttons', function (require) {
         'widget': product_operation_button,
         'condition': function () {
             return this.pos.config.product_operation;
-        }
-    });
-    var button_add_variants = screens.ActionButtonWidget.extend({
-        template: 'button_add_variants',
-        init: function (parent, options) {
-            this._super(parent, options);
-
-            this.pos.get('orders').bind('add remove change', function () {
-                this.renderElement();
-            }, this);
-
-            this.pos.bind('change:selectedOrder', function () {
-                this.renderElement();
-            }, this);
-        },
-        button_click: function () {
-            var selected_orderline = this.pos.get_order().selected_orderline;
-            if (!selected_orderline) {
-                this.pos.gui.show_popup('dialog', {
-                    title: 'Warning',
-                    body: 'Please select line',
-                })
-            } else {
-                if (this.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id]) {
-                    return this.gui.show_popup('pop_up_select_variants', {
-                        variants: this.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id],
-                        selected_orderline: selected_orderline,
-                    });
-                } else {
-                    return this.pos.gui.show_popup('dialog', {
-                        title: 'Warning',
-                        body: 'Product checked to variant checkbox but page variants datas not add any records',
-                    })
-                }
-            }
-        },
-    });
-
-    screens.define_action_button({
-        'name': 'button_add_variants',
-        'widget': button_add_variants,
-        'condition': function () {
-            return this.pos.config.multi_variant;
-        },
-    });
-
-    var button_remove_variants = screens.ActionButtonWidget.extend({
-        template: 'button_remove_variants',
-        init: function (parent, options) {
-            this._super(parent, options);
-
-            this.pos.get('orders').bind('add remove change', function () {
-                this.renderElement();
-            }, this);
-
-            this.pos.bind('change:selectedOrder', function () {
-                this.renderElement();
-            }, this);
-        },
-        button_click: function () {
-            var selected_orderline = this.pos.get_order().selected_orderline;
-            if (!selected_orderline) {
-                return this.gui.show_popup('dialog', {
-                    title: 'Warning !',
-                    body: _t('Please select line'),
-                });
-            } else {
-                selected_orderline['variants'] = [];
-                selected_orderline.set_unit_price(selected_orderline.product.list_price);
-                selected_orderline.price_manually_set = true;
-            }
-        },
-    });
-
-    screens.define_action_button({
-        'name': 'button_remove_variants',
-        'widget': button_remove_variants,
-        'condition': function () {
-            return this.pos.config.multi_variant;
-        },
-    });
-
-    var button_order_signature = screens.ActionButtonWidget.extend({
-        template: 'button_order_signature',
-        button_click: function () {
-            var order = this.pos.get_order();
-            if (order) {
-                this.gui.show_popup('popup_order_signature', {
-                    order: order,
-                    title: 'Signature'
-                });
-            }
-        }
-    });
-    screens.define_action_button({
-        'name': 'button_order_signature',
-        'widget': button_order_signature,
-        'condition': function () {
-            return this.pos.config.signature_order;
-        }
-    });
-
-    var button_order_note = screens.ActionButtonWidget.extend({
-        template: 'button_order_note',
-        button_click: function () {
-            var order = this.pos.get_order();
-            if (order) {
-                this.gui.show_popup('textarea', {
-                    title: _t('Add Note'),
-                    value: order.get_note(),
-                    confirm: function (note) {
-                        order.set_note(note);
-                        order.trigger('change', order);
-                    }
-                });
-            }
-        }
-    });
-    screens.define_action_button({
-        'name': 'button_order_note',
-        'widget': button_order_note,
-        'condition': function () {
-            return this.pos.config.note_order;
         }
     });
 
@@ -588,94 +594,6 @@ odoo.define('pos_retail.buttons', function (require) {
         }
     });
 
-    var button_set_location = screens.ActionButtonWidget.extend({
-        template: 'button_set_location',
-        init: function (parent, options) {
-            this._super(parent, options);
-            this.locations_selected = null;
-            this.pos.bind('change:location', function () {
-                this.renderElement();
-            }, this);
-        },
-        button_click: function () {
-            if (this.pos.stock_locations.length != 0) {
-                this.gui.show_popup('popup_set_location', {
-                    'title': 'Please choose stock location'
-                })
-            } else {
-                this.gui.show_popup('dialog', {
-                    'title': 'Warning',
-                    'body': 'Your stock locations have not any location checked to checkbox [Available in POS]. Please back to backend and config it'
-                })
-            }
-        }
-    });
-    screens.define_action_button({
-        'name': 'button_set_location',
-        'widget': button_set_location,
-        'condition': function () {
-            return this.pos.config.multi_location && this.pos.config.display_onhand;
-        }
-    });
-
-    var button_check_stock = screens.ActionButtonWidget.extend({
-        template: 'button_check_stock',
-        button_click: function () {
-            var self = this;
-            var order = this.pos.get_order();
-            if (!order) {
-                return this.pos.gui.show_popup('dialog', {
-                    title: 'Warning',
-                    body: 'Have not order selected, please select order'
-                })
-            }
-            var selected_line = order.get_selected_orderline();
-            if (!selected_line) {
-                return this.pos.gui.show_popup('dialog', {
-                    title: 'Warning',
-                    body: 'Have not line selected, please select line'
-                })
-            }
-            this.product_check = selected_line.product;
-            return rpc.query({
-                model: 'pos.cache.database',
-                method: 'get_onhand_by_product_id',
-                args: [selected_line.product.id],
-                context: {}
-            }).then(function (datas) {
-                var list = [];
-                if (!datas || !self.pos.stock_location_by_id) {
-                    return false;
-                }
-                for (location_id in datas) {
-                    var location = self.pos.stock_location_by_id[location_id];
-                    if (location) {
-                        list.push({
-                            'label': location['name'] + ' with on hand:' + datas[location_id]['qty_available'],
-                            'item': location
-                        })
-                    }
-                }
-                return self.gui.show_popup('selection', {
-                    title: _t('Stock on hand of ' + self.product_check.display_name),
-                    list: list,
-                    confirm: function (location) {
-                        return self.pos.gui.close_popup();
-                    }
-                });
-            }).fail(function (type, error) {
-                return self.pos.query_backend_fail(type, error);
-            })
-        }
-    });
-    screens.define_action_button({
-        'name': 'button_check_stock',
-        'widget': button_check_stock,
-        'condition': function () {
-            return this.pos.config.multi_location && this.pos.config.display_onhand;
-        }
-    });
-
     var button_restart_session = screens.ActionButtonWidget.extend({
         template: 'button_restart_session',
         init: function (parent, options) {
@@ -752,7 +670,7 @@ odoo.define('pos_retail.buttons', function (require) {
     var button_print_last_order = screens.ActionButtonWidget.extend({
         template: 'button_print_last_order',
         button_click: function () {
-            if (this.pos.posbox_report_xml || this.pos.report_xml) {
+            if (this.pos.report_xml || this.pos.report_html) {
                 this.pos.gui.show_screen('report');
             } else {
                 this.gui.show_popup('dialog', {
@@ -818,12 +736,21 @@ odoo.define('pos_retail.buttons', function (require) {
             });
         },
         init: function (parent, options) {
+            var self = this;
             this._super(parent, options);
             this.pos.bind('change:guest', function () {
                 this.renderElement();
                 var order = this.pos.get_order();
                 order.trigger('change', order);
             }, this);
+            if (this.pos.config.set_guest_when_add_new_order) {
+                this.pos.get('orders').bind('add', function () {
+                    setTimeout(function () {
+                        self.button_click()
+                    }, 1000);
+
+                }, this);
+            }
         },
     });
 

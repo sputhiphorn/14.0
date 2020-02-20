@@ -14,7 +14,8 @@ class sale_order(models.Model):
     _inherit = "sale.order"
 
     signature = fields.Binary('Signature', readonly=1)
-    book_order = fields.Boolean('Book order')
+    book_order = fields.Boolean('Booked Order')
+    pos_location_id = fields.Many2one('stock.location', 'POS Location')
     delivery_date = fields.Datetime('Delivery date')
     delivered_date = fields.Datetime('Delivered date')
     delivery_address = fields.Char('Delivery address')
@@ -130,7 +131,7 @@ class sale_order(models.Model):
         return super(sale_order, self).unlink()
 
 
-class sale_order_line(models.Model):
+class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
     _order = 'parent_id'
 
@@ -142,17 +143,17 @@ class sale_order_line(models.Model):
                                    'sale_line_id',
                                    'variant_id',
                                    string='Variants')
-    pos_note = fields.Text('Booking note')
+    pos_note = fields.Text('Booking Note')
 
     @api.multi
     def unlink(self):
         for record in self:
             self.env['pos.cache.database'].remove_record(self._inherit, record.id)
-        return super(sale_order_line, self).unlink()
+        return super(SaleOrderLine, self).unlink()
 
     @api.model
     def create(self, vals):
-        line = super(sale_order_line, self).create(vals)
+        line = super(SaleOrderLine, self).create(vals)
         if line.insert:
             line.order_id.write({'insert': True})
         self.env['pos.cache.database'].insert_data('sale.order', line.order_id.id)
@@ -161,7 +162,7 @@ class sale_order_line(models.Model):
 
     @api.multi
     def write(self, vals):
-        res = super(sale_order_line, self).write(vals)
+        res = super(SaleOrderLine, self).write(vals)
         for line in self:
             self.env['pos.cache.database'].insert_data(self._inherit, line.id)
         return res
@@ -185,3 +186,10 @@ class sale_order_line(models.Model):
             'nodestroy': True,
             'target': 'new',
         }
+
+    @api.multi
+    def _prepare_procurement_values(self, group_id=False):
+        values = super(SaleOrderLine, self)._prepare_procurement_values(group_id)
+        if self.order_id.pos_location_id:
+            values.update({'location_id': self.order_id.pos_location_id.id})
+        return values

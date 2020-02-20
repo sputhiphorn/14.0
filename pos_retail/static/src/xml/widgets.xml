@@ -6,7 +6,7 @@
     </t>
 
     <t t-name="button_list_widget">
-        <div class="oe_status js_proxy show_hide_buttons">
+        <div class="oe_status js_proxy show_hide_buttons" title="Show/Hide List Buttons, Keyboard Event: b">
             <div class="js_connected oe_icon">
                 <i class='fa fa-list'></i>
             </div>

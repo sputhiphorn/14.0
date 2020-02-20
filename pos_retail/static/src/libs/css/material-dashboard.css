@@ -9596,7 +9596,6 @@ select.form-control[multiple],
 .table>tbody>tr>td,
 .table>tfoot>tr>td {
     padding: 12px 8px;
-    font-size: 16px;
     vertical-align: middle;
 }
 
@@ -12233,7 +12232,7 @@ footer .btn {
     font-weight: 900;
     margin: 10px;
     color: black;
-    border-bottom: 1px solid !important;
+    font-size: 16px;
 }
 
 .card .card-title:not(.card-calendar .card-title) {

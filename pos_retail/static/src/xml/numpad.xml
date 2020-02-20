@@ -15,27 +15,11 @@
                     <button class="input-button number-char" style="visibility: hidden">3</button>
                 </t>
                 <t t-if="widget.pos.config.allow_qty">
-                    <button class="mode-button" data-mode='quantity'>Qty
-                        <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    q
-                                </span>
-                            </li>
-                        </t>
+                    <button class="mode-button" data-mode='quantity' title="Keyboard Event: q">Qty
                     </button>
                 </t>
                 <t t-if="!widget.pos.config.allow_qty">
                     <button class="mode-button" style="visibility: hidden">Qty
-                        <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    q
-                                </span>
-                            </li>
-                        </t>
                     </button>
                 </t>
                 <t t-if="widget.pos.config.allow_numpad">
@@ -49,26 +33,14 @@
                     <button class="input-button number-char" style="visibility: hidden">6</button>
                 </t>
                 <t t-if="widget.pos.config.allow_discount">
-                    <button class="mode-button" data-mode='discount'>Disc
+                    <button class="mode-button" data-mode='discount' title="Keyboard Event: d">Disc
                         <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    d
-                                </span>
-                            </li>
                         </t>
                     </button>
                 </t>
                 <t t-if="!widget.pos.config.allow_discount">
                     <button class="mode-button" style="visibility: hidden">Disc
                         <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    d
-                                </span>
-                            </li>
                         </t>
                     </button>
                 </t>
@@ -83,27 +55,11 @@
                     <button class="input-button number-char" style="visibility: hidden">9</button>
                 </t>
                 <t t-if="widget.pos.config.allow_price">
-                    <button class="mode-button" data-mode='price'>Price
-                        <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    p
-                                </span>
-                            </li>
-                        </t>
+                    <button class="mode-button" data-mode='price' title="Keyboard Event: p">Price
                     </button>
                 </t>
                 <t t-if="!widget.pos.config.allow_price">
                     <button class="mode-button" style="visibility: hidden">Price
-                        <t t-if="widget.pos.config.keyboard_event">
-                            <li>
-                                <span class="button_key">
-                                    <i class="fa fa-keyboard"></i>
-                                    p
-                                </span>
-                            </li>
-                        </t>
                     </button>
                 </t>
                 <t t-if="widget.pos.config.allow_numpad">
@@ -117,7 +73,7 @@
                     <button class="input-button number-char" style="visibility: hidden">.</button>
                 </t>
                 <t t-if="widget.pos.config.allow_remove_line">
-                    <button class="input-button numpad-backspace">
+                    <button class="input-button numpad-backspace" title="Remove Line Selected, Keyboard Event: Del">
                         <img style="pointer-events: none;" src="/pos_retail/static/src/icons/trash.png" width="24" height="21" />
                     </button>
                 </t>

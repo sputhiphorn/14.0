@@ -51,7 +51,7 @@
                 </form>
             </field>
         </record>
-         -->
+        -->
 
         <record id="booking_order_quotation_tree" model="ir.ui.view">
             <field name="name">quotation.tree.retail.inherit</field>
@@ -101,9 +101,9 @@
                     <field name="signature" widget='image' readonly="1"
                            attrs="{'invisible': [('book_order', '=', False)]}"/>
                 </xpath>
-                <xpath expr="//field[@name='order_line']/tree/field[@name='price_total']" position="before">
+                <xpath expr="//field[@name='order_line']//tree/field[@name='state']" position="before">
                     <field name="variant_ids" widget="many2many_tags"/>
-                    <field name="pos_note" widget="many2many_tags"/>
+                    <field name="pos_note"/>
                 </xpath>
             </field>
         </record>

@@ -25,7 +25,7 @@ class purchase_order(models.Model):
                     for move_line in picking.move_lines:
                         move_line.write({'quantity_done': move_line.product_uom_qty})
                     picking.button_validate()
-        if purchase_order_state == 'confirm_invoice':
+        if purchase_order_state == 'confirm_invoice' and version_info != 13:
             partner = po.partner_id
             account_id = partner.property_account_payable_id.id
             invoice = None

@@ -5,18 +5,21 @@ odoo.define('pos_retail.lock_session', function (require) {
     var rpc = require('pos.rpc');
 
     chrome.Chrome.include({
+        unlock_pos_screen: function () {
+            this.pos.set('lock_status', {state: 'connecting', pending: 0});
+            $('.pos-topheader').addClass('oe_hidden');
+            $('.pos-content').addClass('oe_hidden');
+            this.pos.gui.show_popup('popup_lock_page', {
+                title: 'Locked',
+                body: 'Your session have locked, please input POS Pass Pin of User Login Odoo'
+            });
+        },
         build_widgets: function () {
             var self = this;
             this._super();
             if (this.pos.config.allow_lock_screen || this.pos.config.lock_state == 'locked') {
                 setTimeout(function () {
-                    self.pos.set('lock_status', {state: 'connecting', pending: 0});
-                    $('.pos-topheader').addClass('oe_hidden');
-                    $('.pos-content').addClass('oe_hidden');
-                    self.pos.gui.show_popup('popup_lock_page', {
-                        title: 'Locked',
-                        body: 'Use pos security pin for unlock'
-                    });
+                    self.unlock_pos_screen();
                 }, 200);
             }
         }
@@ -27,16 +30,12 @@ odoo.define('pos_retail.lock_session', function (require) {
         login: function () {
             var pos_security_pin = this.$('.input_form').val();
             if (pos_security_pin != this.pos.user.pos_security_pin) {
-                return this.pos.gui.show_popup('popup_lock_page', {
-                    title: 'Locked',
-                    body: 'Input could not blank or your pos pass pin not correct'
-                });
+                var message = 'Input could not blank or your pos pass pin not correct';
+                return this.wrong_input("input[class='input_form']", message);
             }
             if (!this.pos.user.pos_security_pin) {
-                return this.pos.gui.show_popup('popup_lock_page', {
-                    title: 'Warning',
-                    body: 'User ' + this.pos.user['name'] + ' not set pos pass pin. Please go to Setting / Users / Point of sale tab and input'
-                });
+                var message = 'User ' + this.pos.user['name'] + ' not set pos pass pin. Please go to Setting / Users / Point of sale tab and input';
+                return this.wrong_input("input[class='input_form']", message);
             }
             this.pos.set('lock_status', {state: 'connected', pending: 0});
             rpc.query({

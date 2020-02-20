@@ -23,10 +23,10 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     fields[el.name] = el.value || false;
                 });
                 if (!fields.name) {
-                    self.wrong_input('#name');
+                    self.wrong_input('input[name="name"]', "(*) Name is required");
                     validate = false;
                 } else {
-                    self.passed_input('#name');
+                    self.passed_input('input[name="name"]');
                 }
                 if (validate == false) {
                     return;
@@ -57,7 +57,7 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                         body: '1 new category just added to your pos screen',
                         color: 'success'
                     });
-                }, function (type, err) {
+                }, function (err) {
                     if (err.code && err.code == 200 && err.data && err.data.message && err.data.name) {
                         self.pos.gui.show_popup('dialog', {
                             title: err.data.name,
@@ -142,7 +142,6 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
         template: 'popup_create_product',
         show: function (options) {
             var self = this;
-            var validate;
             this.uploaded_picture = null;
             this._super(options);
             var contents = this.$('.create_product');
@@ -153,13 +152,9 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     fields[el.name] = el.value || false;
                 });
                 if (!fields.name) {
-                    self.wrong_input('#name');
-                    validate = false;
+                    return self.wrong_input('input[name="name"]', "(*) Name is required");
                 } else {
-                    self.passed_input('#name');
-                }
-                if (validate == false) {
-                    return;
+                    self.passed_input('input[name="name"]');
                 }
                 if (this.uploaded_picture) {
                     fields.image = this.uploaded_picture.split(',')[1];
@@ -181,7 +176,7 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                         body: '1 Product just added to your pos screen',
                         color: 'success'
                     })
-                }, function (type, err) {
+                }, function (err) {
                     if (err.code && err.code == 200 && err.data && err.data.message && err.data.name) {
                         self.pos.gui.show_popup('dialog', {
                             title: err.data.name,
@@ -265,7 +260,6 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
     var products_operation = screens.ScreenWidget.extend({ // products screen
         template: 'products_operation',
         init: function (parent, options) {
-            var self = this;
             this.product_selected = null;
             this._super(parent, options);
         },
@@ -280,7 +274,9 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
             this.render_list(results);
             if (this.product_selected) {
                 var product = this.pos.db.product_by_id[this.product_selected['id']];
-                this.display_product_edit('show', product, 0);
+                if (product) {
+                    this.display_product_edit('show', product, 0);
+                }
             }
         },
         apply_quickly_search_products: function () {
@@ -298,7 +294,7 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                         setTimeout(function () {
                             self.$('.searchbox input')[0].value = '';
                             self.$('.searchbox input').focus();
-                        }, 1000);
+                        }, 2000);
 
                     }
                 }
@@ -337,6 +333,11 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
             });
             this.$('.searchbox .search-product').click(function () {
                 self.clear_search();
+            });
+            this.$('.add_pos_category').click(function () { // quickly add product
+                self.pos.gui.show_popup('popup_create_pos_category', {
+                    title: 'Add New Product Category'
+                })
             });
             this.$('.sort_by_product_operation_id').click(function () {
                 var products = self.pos.db.get_product_by_category(0).sort(self.pos.sort_by('id', self.reverse, parseInt));
@@ -469,10 +470,7 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                 fields[el.name] = el.value || false;
             });
             if (!fields.name) {
-                return this.pos.gui.show_popup('dialog', {
-                    title: 'Error',
-                    body: 'A Product name is required'
-                });
+                return this.wrong_input("input[name='name']", '(*) Name is required');
             }
             if (this.uploaded_picture) {
                 fields.image = this.uploaded_picture.split(',')[1];
@@ -486,19 +484,15 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     args: [[parseInt(fields['id'])], fields],
                 })
                     .then(function (result) {
-                        if (result == true) {
+                        self.pos.get_modifiers_backend('product.product').done(function () {
                             self.pos.gui.show_popup('dialog', {
                                 title: 'Saved',
                                 body: 'Product saved',
-                                color: 'success',
-                            })
-                        }
-                        self._do_update_screen_after_save();
-                    }, function (type, err) {
-                        self.pos.gui.show_popup('dialog', {
-                            title: 'Error',
-                            body: 'Odoo connection fail, could not save'
+                                color: 'success'
+                            });
                         })
+                    }, function (err) {
+                        self.pos.query_backend_fail(err);
                     });
             } else {
                 rpc.query({
@@ -507,22 +501,25 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     args: [fields],
                 })
                     .then(function (product_id) {
+                        self.product_new_id = product_id;
                         self.$('.product-details-contents').hide();
-                        self.pos.gui.show_popup('dialog', {
-                            title: 'Saved',
-                            body: 'Product saved'
+                        self.pos.get_modifiers_backend('product.product').done(function () {
+                            var product_new_id = self.product_new_id;
+                            var product = self.pos.db.product_by_id[product_new_id];
+                            if (product) {
+                                self.product_selected = product;
+                                self.display_product_edit('show', product, 0);
+                            }
+                            self.pos.gui.show_popup('dialog', {
+                                title: 'Saved',
+                                body: 'Product saved',
+                                color: 'success'
+                            });
                         })
-                        self._do_update_screen_after_save();
-                    }, function (type, err) {
-                        self.pos.gui.show_popup('dialog', {
-                            title: 'Error',
-                            body: 'Odoo connection fail, could not save'
-                        })
+                    }, function (err) {
+                        self.pos.query_backend_fail(err);
                     });
             }
-        },
-        _do_update_screen_after_save: function () {
-            this.pos.get_modifiers_backend('product.product');
         },
         resize_image_to_dataurl: function (img, maxwidth, maxheight, callback) {
             img.onload = function () {
@@ -591,15 +588,18 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     var product_id = fields['id'];
                     var product = self.pos.db.product_by_id[product_id];
                     if (product && product['barcode']) {
+                        var product_label_html = qweb.render('product_label_xml', {
+                            product: product
+                        });
+                        if (self.pos.epson_printer_default) {
+                            return self.pos.print_network(product_label_html, self.pos.epson_printer_default['ip']);
+                        }
                         if (!self.pos.config.iface_print_via_proxy) {
                             return self.pos.gui.show_popup('confirm', {
                                 title: 'Warning',
                                 body: 'Your printer turn off, Please setup posbox ip address and printer'
                             })
                         }
-                        var product_label_html = qweb.render('product_label_xml', {
-                            product: product
-                        });
                         self.pos.proxy.print_receipt(product_label_html);
                         self.pos.gui.show_popup('dialog', {
                             title: 'Printed barcode',
@@ -614,10 +614,7 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
                     }
                 });
                 contents.find('.update_qty_on_hand').on('click', function (event) {
-                    self.pos.gui.show_popup('popup_update_quantity_each_location', {
-                        title: 'Update qty on hand',
-                        product: product
-                    })
+                    return self.pos.update_onhand_by_product(self.product_selected)
                 });
                 this.$('.product-details-contents').show();
             }
@@ -645,65 +642,5 @@ odoo.define('pos_retail.screen_products_operation', function (require) {
         }
     });
     gui.define_screen({name: 'products_operation', widget: products_operation});
-
-    var popup_update_quantity_each_location = PopupWidget.extend({
-        template: 'popup_update_quantity_each_location',
-        show: function (options) {
-            var self = this;
-            this._super(options);
-            this.product = options.product;
-            var locations = this.pos.stock_locations;
-            locations = locations.concat(this.pos.get_location());
-            this.location_selected = this.pos.get_location() || null;
-            self.$el.find('.body').html(qweb.render('locations_list', {
-                locations: locations,
-                widget: self
-            }));
-
-            this.$('.location').click(function () {
-                var location_id = parseInt($(this).data('id'));
-                var location = self.pos.stock_location_by_id[location_id];
-                var product_tmpl_id;
-                if (self.product.product_tmpl_id instanceof Array) { // it very very important, please keep on v11 and 12. because some functions used product_tmpl_id with integer not array
-                    product_tmpl_id = self.product.product_tmpl_id[0];
-                } else {
-                    product_tmpl_id = self.product.product_tmpl_id;
-                }
-                if (location) {
-                    self.pos.gui.show_popup('number', {
-                        'title': _t('Input new qty on hand'),
-                        'value': self.pos.config.discount_limit_amount,
-                        'confirm': function (new_quantity) {
-                            var new_quantity = parseFloat(new_quantity);
-                            return rpc.query({
-                                model: 'stock.location',
-                                method: 'pos_update_stock_on_hand_by_location_id',
-                                args: [location.id, {
-                                    product_id: self.product.id,
-                                    product_tmpl_id: product_tmpl_id,
-                                    new_quantity: new_quantity,
-                                    location_id: location.id
-                                }],
-                                context: {}
-                            }).done(function (values) {
-                                return self.pos.gui.show_popup('dialog', {
-                                    title: values['product'],
-                                    body: 'At ' + values['location'] + ' new on hand: ' + values['quantity'],
-                                    color: 'success'
-                                })
-                            }).fail(function (type, error) {
-                                return self.pos.query_backend_fail(type, error);
-                            })
-                        }
-                    })
-
-                }
-            });
-            this.$('.close').click(function () {
-                self.pos.gui.close_popup();
-            });
-        }
-    });
-    gui.define_popup({name: 'popup_update_quantity_each_location', widget: popup_update_quantity_each_location});
 
 });

@@ -3,9 +3,58 @@ odoo.define('pos_retail.screen_invoices', function (require) {
 
     var screens = require('point_of_sale.screens');
     var core = require('web.core');
-    var gui = require('point_of_sale.gui');
     var rpc = require('pos.rpc');
     var qweb = core.qweb;
+    var gui = require('point_of_sale.gui');
+    var PopupWidget = require('point_of_sale.popups');
+
+    var popup_invoice_register_payment = PopupWidget.extend({
+        template: 'popup_invoice_register_payment',
+        show: function (options) {
+            var self = this;
+            options = options || {};
+            options.cashregisters = this.pos.cashregisters;
+            options.payment_methods = this.pos.payment_methods;
+            options.title = options.invoice.number;
+            options.invoice = options.invoice;
+            this.options = options;
+            this._super(options);
+
+        },
+        click_confirm: function () {
+            var self = this;
+            var fields = {};
+            this.$('.field').each(function (idx, el) {
+                fields[el.name] = el.value || false;
+            });
+            var invoice = this.options.invoice;
+            if (!fields['residual'] || fields['residual'] <= 0) {
+                return self.wrong_input('input[name="residual"]', "(*) Residual is required and bigger than 0");
+            } else {
+                self.passed_input('input[name="residual"]');
+            }
+            this.pos.gui.close_popup();
+            if (this.options.confirm) {
+                this.options.confirm.call(this, this.options.invoice.id, parseInt(fields['journal_id']), parseFloat(fields['residual']));
+            }
+        }
+    });
+    gui.define_popup({name: 'popup_invoice_register_payment', widget: popup_invoice_register_payment});
+
+    var button_go_invoice_screen = screens.ActionButtonWidget.extend({
+        template: 'button_go_invoice_screen',
+        button_click: function () {
+            this.pos.gui.screen_instances["invoices"].refresh_screen();
+            this.gui.show_screen('invoices');
+        },
+    });
+    screens.define_action_button({
+        'name': 'button_go_invoice_screen',
+        'widget': button_go_invoice_screen,
+        'condition': function () {
+            return this.pos.config.management_invoice == true;
+        }
+    });
 
     var invoices_screen = screens.ScreenWidget.extend({
         template: 'invoices_screen',
@@ -25,22 +74,42 @@ odoo.define('pos_retail.screen_invoices', function (require) {
                 }
             })
         },
-        refresh_screen: function () {
+        refresh_screen: function (reload_all) {
             var self = this;
-            this.pos.get_modifiers_backend('account.invoice').then(function () {
-                self.pos.get_modifiers_backend('account.invoice.line');
-                self.pos.trigger('refresh:invoice_screen');
-            });
+            if (reload_all) {
+                var invoice_model = this.pos.get_model('account.invoice');
+                if (invoice_model) {
+                    var first_load = this.pos.load_server_data_by_model(invoice_model);
+                    return first_load.done(function () {
+                        var invoice_line_model = self.pos.get_model('account.invoice.line');
+                        var second_load = self.pos.load_server_data_by_model(invoice_line_model);
+                        return second_load.done(function () {
+                            self.pos.trigger('refresh:invoice_screen');
+                        })
+                    })
+                }
+            } else {
+                this.pos.get_modifiers_backend_all_models().then(function () {
+                    self.pos.trigger('refresh:invoice_screen');
+                })
+            }
         },
-        show: function () {
+        renderElement: function () {
             var self = this;
-            this.render_screen();
+            this.search_handler = function (event) {
+                if (event.type == "keypress" || event.keyCode === 46 || event.keyCode === 8) {
+                    var searchbox = this;
+                    setTimeout(function () {
+                        self.perform_search(searchbox.value, event.which === 13);
+                    }, 70);
+                }
+            };
             this._super();
+            this.clear_search_handler = function (event) {
+                self.clear_search();
+            };
             this.$('.invoice-list').delegate('.invoice-line', 'click', function (event) {
                 self.invoice_select(event, $(this), parseInt($(this).data('id')));
-            });
-            this.$('.searchbox .search-invoice').click(function () {
-                self.clear_search();
             });
             this.$('.invoices_open').click(function () {
                 var invoices = _.filter(self.pos.db.get_invoices(), function (invoice) {
@@ -60,23 +129,16 @@ odoo.define('pos_retail.screen_invoices', function (require) {
             this.$('.button_sync').click(function () {
                 self.refresh_screen();
             });
-            var $search_box = $('.clientlist-screen .search-invoice >input');
-            $search_box.autocomplete({
-                source: this.pos.db.get_invoices_source(),
-                minLength: this.pos.config.min_length_search,
-                select: function (event, ui) {
-                    if (ui && ui['item'] && ui['item']['value']) {
-                        var invoice = self.pos.db.invoice_by_id[ui['item']['value']];
-                        if (invoice) {
-                            self.display_invoice_details(invoice);
-                            setTimeout(function () {
-                                self.$('.searchbox input')[0].value = '';
-                                self.$('.searchbox input').focus();
-                            }, 1000);
-                        }
-                    }
-                }
-            });
+            this.el.querySelector('.searchbox input').addEventListener('keypress', this.search_handler);
+            this.el.querySelector('.searchbox input').addEventListener('keydown', this.search_handler);
+            this.el.querySelector('.searchbox .search-clear').addEventListener('click', this.clear_search_handler);
+
+        },
+        show: function () {
+            this.render_screen();
+            this._super();
+            this.$el.find('input').focus();
+            this.refresh_screen();
             if (this.invoice_selected) {
                 this.display_invoice_details(this.invoice_selected);
             }
@@ -244,28 +306,28 @@ odoo.define('pos_retail.screen_invoices', function (require) {
                 self.gui.show_popup('popup_invoice_register_payment', {
                     invoice: self.invoice_selected,
                     confirm: function (invoice_id, journal_id, amount) {
+                        self.pay_amount = amount;
                         return rpc.query({
                             model: 'account.invoice',
                             method: 'pos_register_amount',
                             args:
                                 [invoice_id, journal_id, amount]
                         }).then(function (status) {
+                            self.refresh_screen(true);
                             if (status == false) {
                                 return self.gui.show_popup('dialog', {
                                     title: 'Warning',
                                     body: invoice.number + ' is paid, could not register more'
                                 });
                             } else {
-                                self.refresh_screen();
                                 return self.gui.show_popup('dialog', {
                                     title: 'Done',
-                                    body: invoice.number + 'just registered amount ' + self.pay_amount,
+                                    body: invoice.number + ' registered amount ' + self.pay_amount,
                                     color: 'success'
                                 });
                             }
-
-                        }).fail(function (type, error) {
-                            return self.pos.query_backend_fail(type, error);
+                        }).fail(function (error) {
+                            return self.pos.query_backend_fail(error);
                         });
                     }
                 })
@@ -285,11 +347,8 @@ odoo.define('pos_retail.screen_invoices', function (require) {
                             window.open(self.link, '_blank');
                         }
                     });
-                }).fail(function (type, error) {
-                    self.gui.show_popup('dialog', {
-                        title: 'ERROR',
-                        body: 'Please check log of your odoo, could not process your action',
-                    });
+                }).fail(function (error) {
+                    self.pos.query_backend_fail(error)
                 });
 
             });
@@ -348,8 +407,8 @@ odoo.define('pos_retail.screen_invoices', function (require) {
                                                             window.open(self.link, '_blank');
                                                         }
                                                     })
-                                                }).fail(function (type, error) {
-                                                    return self.pos.query_backend_fail(type, error);
+                                                }).fail(function (error) {
+                                                    return self.pos.query_backend_fail(error);
                                                 });
                                             });
 
@@ -361,11 +420,11 @@ odoo.define('pos_retail.screen_invoices', function (require) {
                                         })
                                     }
                                 })
-                            }).fail(function (type, error) {
-                                return self.pos.query_backend_fail(type, error);
+                            }).fail(function (error) {
+                                return self.pos.query_backend_fail(error);
                             });
-                        }).fail(function (type, error) {
-                            return self.pos.query_backend_fail(type, error);
+                        }).fail(function (error) {
+                            return self.pos.query_backend_fail(error);
                         });
                     }
                 })
@@ -383,20 +442,6 @@ odoo.define('pos_retail.screen_invoices', function (require) {
             if (this.pos.db.get_invoices().length) {
                 this.render_invoice_list(this.pos.db.get_invoices(1000));
             }
-            var search_timeout = null;
-            if (this.pos.config.iface_vkeyboard && this.chrome.widget.keyboard) {
-                this.chrome.widget.keyboard.connect(this.$('.searchbox input'));
-            }
-            this.$('.search-invoice input').on('keypress', function (event) {
-                clearTimeout(search_timeout);
-                var query = this.value;
-                search_timeout = setTimeout(function () {
-                    self.perform_search(query, event.which === 13);
-                }, 70);
-            });
-            this.$('.searchbox .search-clear').click(function () {
-                self.clear_search();
-            });
             this.$('.back').click(function () {
                 self.clear_search();
                 self.gui.show_screen('products');

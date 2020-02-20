@@ -14,7 +14,7 @@ odoo.define('pos_retail.screen_product_list', function (require) {
         click_product: function (product) {
             this._super.apply(this, arguments);
             this.pos._update_cart_qty_by_order([product.id]);
-            var $p = $('span[data-product-id="' + product.id + '"]');
+            var $p = $('span[data-product-id="' + product.id + '"]'); // TODO: v11 and olders
             $($p).animate({
                 'opacity': 0.5,
             }, 300, function () {
@@ -22,10 +22,48 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                     'opacity': 1,
                 }, 300);
             });
+            var cart = $('.shopping-cart');
+            var imgtodrag = $p.children('div').find("img").eq(0);
+            if (imgtodrag.length > 0) {
+                var imgclone = imgtodrag.clone()
+                    .offset({
+                        top: imgtodrag.offset().top,
+                        left: imgtodrag.offset().left
+                    })
+                    .css({
+                        'opacity': '0.8',
+                        'position': 'absolute',
+                        'height': '150px',
+                        'width': '150px',
+                        'z-index': '100'
+                    })
+                    .appendTo($('body'))
+                    .animate({
+                        'top': cart.offset().top + 10,
+                        'left': cart.offset().left + 10,
+                        'width': 75,
+                        'height': 75
+                    }, 1000, 'easeInOutExpo');
+
+                setTimeout(function () {
+                    cart.effect("shake", {
+                        times: 2
+                    }, 200);
+                }, 1500);
+
+                imgclone.animate({
+                    'width': 0,
+                    'height': 0
+                }, function () {
+                    $(this).detach()
+                });
+            }
         },
         refresh_screen: function () {
-            this.pos.get_modifiers_backend('product.product');
-            this.apply_quickly_search_products();
+            var self = this;
+            this.pos.get_modifiers_backend_all_models().done(function () {
+                self.apply_quickly_search_products();
+            })
         },
         start: function () {
             var self = this;
@@ -73,7 +111,7 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                 $('.buttons_pane').css('display', 'none');
                 $('.show_hide_buttons').css('display', 'none');
                 if (!this.pos.config.mobile_responsive) {
-                    $('.rightpane').css('left', '540px');
+                    $('.rightpane').css('left', '600px');
                 }
                 $('.pos-rightheader').css('left', '0px');
             }
@@ -85,51 +123,7 @@ odoo.define('pos_retail.screen_product_list', function (require) {
             }
         },
         do_update_products_cache: function (product_datas) {
-            if (this.pos.server_version == 10) {
-                this.pos.db.add_products(product_datas);
-                for (var i = 0; i < product_datas.length; i++) {
-                    var product = product_datas[i];
-                    if (this.pos.db.stock_datas && this.pos.db.stock_datas[product['id']]) {
-                        product['qty_available'] = this.pos.db.stock_datas[product['id']];
-                    }
-                    this.product_list_widget.product_cache.cache_node(product['id'], null);
-                    var product_node = this.product_list_widget.render_product(product);
-                    product_node.addEventListener('click', this.product_list_widget.click_product_handler);
-                    var $product_el = $(".product-list " + "[data-product-id='" + product['id'] + "']");
-                    if ($product_el.length > 0) {
-                        $product_el.replaceWith(product_node);
-                    }
-                }
-            } else {
-                var self = this;
-                this.pos.db.add_products(_.map(product_datas, function (product) {
-                    var using_company_currency = self.pos.config.currency_id[0] === self.pos.company.currency_id[0];
-                    if (self.pos.company_currency) {
-                        var conversion_rate = self.pos.currency.rate / self.pos.company_currency.rate;
-                    } else {
-                        var conversion_rate = 1;
-                    }
-                    if (!using_company_currency) {
-                        product['lst_price'] = round_pr(product.lst_price * conversion_rate, self.pos.currency.rounding);
-                    }
-                    if (self.pos.db.stock_datas && self.pos.db.stock_datas[product['id']]) {
-                        product['qty_available'] = self.pos.db.stock_datas[product['id']];
-                    }
-                    product['categ'] = _.findWhere(self.pos.product_categories, {'id': product['categ_id'][0]});
-                    product = new models.Product({}, product);
-                    var current_pricelist = self.pos._get_active_pricelist();
-                    var cache_key = self.product_list_widget.calculate_cache_key(product, current_pricelist);
-                    self.product_list_widget.product_cache.cache_node(cache_key, null);
-                    var product_node = self.product_list_widget.render_product(product);
-                    product_node.addEventListener('click', self.product_list_widget.click_product_handler);
-                    var contents = document.querySelector(".product-list " + "[data-product-id='" + product['id'] + "']");
-                    if (contents) {
-                        contents.replaceWith(product_node)
-                    }
-                    return product;
-                }));
-            }
-            // if have any change, we update quickly search and re-render products screen
+            this._super(product_datas);
             this.apply_quickly_search_products();
         },
         // This function will eat more RAM memory
@@ -153,63 +147,9 @@ odoo.define('pos_retail.screen_product_list', function (require) {
             this.$('.category-list-scroller').remove();
             this.$('.categories').remove();
             this.product_categories_widget.replace($('.rightpane-header'));  // could not use: this.$('.rightpane-header') because product operation update stock, could not refresh qty on hand
-            $('input').click(function () {
-                self.gui.screen_instances['products'].order_widget.remove_event_keyboard()
-            });
         },
         init_quickly_actions: function () {
             var self = this;
-            this.$('.add_customer').click(function () { // quickly add customer
-                self.pos.gui.show_popup('popup_create_customer', {
-                    title: 'Add customer'
-                })
-            });
-            this.$('.add_product').click(function () { // quickly add product
-                self.pos.gui.show_popup('popup_create_product', {
-                    title: 'Add product',
-                })
-            });
-            this.$('.add_pos_category').click(function () { // quickly add product
-                self.pos.gui.show_popup('popup_create_pos_category', {
-                    title: 'Add category'
-                })
-            });
-            this.$('.quickly_payment').click(function () { // quickly payment
-                if (!self.pos.config.quickly_payment_full_journal_id) {
-                    return;
-                }
-                var order = self.pos.get_order();
-                if (!order) {
-                    return;
-                }
-                if (order.orderlines.length == 0) {
-                    return self.pos.gui.show_popup('dialog', {
-                        title: 'Error',
-                        body: 'Your order lines is blank'
-                    })
-                }
-                var paymentlines = order.get_paymentlines();
-                for (var i = 0; i < paymentlines.length; i++) {
-                    paymentlines[i].destroy();
-                }
-                var register = _.find(self.pos.cashregisters, function (register) {
-                    return register['journal']['id'] == self.pos.config.quickly_payment_full_journal_id[0];
-                });
-                if (!register) {
-                    return self.pos.gui.show_popup('dialog', {
-                        title: 'Error',
-                        body: 'Your config not add quickly payment method, please add before use'
-                    })
-                }
-                var amount_due = order.get_due();
-                order.add_paymentline(register);
-                var selected_paymentline = order.selected_paymentline;
-                selected_paymentline.set_amount(amount_due);
-                order.initialize_validation_date();
-                self.pos.push_order(order);
-                self.pos.gui.show_screen('receipt');
-
-            });
         },
         apply_quickly_search_products: function () {
             var self = this;
@@ -222,10 +162,14 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                         var product = self.pos.db.get_product_by_id(ui['item']['value']);
                         if (product) {
                             self.pos.get_order().add_product(product);
+                            $('.search-products').blur();
                         }
                         setTimeout(function () {
                             self.product_categories_widget.clear_search();
-                        }, 1000);
+                            self.order_widget.remove_event_keyboard();
+                            self.order_widget.event_input_linked_keyboard_event();
+                            self.apply_quickly_search_products();
+                        }, 200);
                     }
 
                 }
@@ -240,16 +184,19 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                     source: sources,
                     minLength: this.pos.config.min_length_search,
                     select: function (event, ui) {
+                        $('.find_customer input').blur();
                         if (ui && ui['item'] && ui['item']['value']) {
                             var partner = self.pos.db.partner_by_id[parseInt(ui['item']['value'])];
                             if (partner) {
                                 self.gui.screen_instances["clientlist"]['new_client'] = partner;
-                                self.pos.trigger('client:save_changes');
                                 setTimeout(function () {
                                     var input = $('.find_customer input');
                                     input.val("");
-                                    input.focus();
-                                }, 10);
+                                    self.pos.trigger('client:save_changes');
+                                    self.order_widget.add_event_keyboard();
+                                    self.order_widget.event_input_linked_keyboard_event();
+                                    self.apply_quickly_search_partners();
+                                }, 200);
                             }
                         }
                     }
@@ -262,10 +209,11 @@ odoo.define('pos_retail.screen_product_list', function (require) {
         show: function () {
             var self = this;
             this._super();
+            this.refresh_screen();
             this.apply_quickly_search_products();
             this.apply_quickly_search_partners();
-            // when have update partners from backend
-            // we re-add apply_quickly_search_partners
+            // TODO: when have update partners from backend
+            // TODO: we re-add apply_quickly_search_partners
             this.pos.bind('refresh:partner_screen', function () {
                 self.apply_quickly_search_partners();
             });
@@ -283,16 +231,16 @@ odoo.define('pos_retail.screen_product_list', function (require) {
             }, self);
             if (!this.pos.config.mobile_responsive) {
                 if (this.pos.show_left_buttons == true) {
-                    $('.buttons_pane').animate({width: 220}, 'fast');
+                    $('.buttons_pane').animate({width: 170}, 'fast');
                     $('.leftpane').animate({left: 0}, 'fast');
-                    $('.rightpane').animate({left: 760}, 'fast');
+                    $('.rightpane').animate({left: 605}, 'fast');
                     $('.show_hide_buttons .fa-caret-right').toggleClass('fa fa-th fa fa fa-caret-left');
                     this.pos.show_left_buttons = true;
                 }
                 if (this.pos.show_left_buttons == false) {
                     $('.buttons_pane').animate({width: 0}, 'fast');
                     $('.leftpane').animate({left: 0}, 'fast');
-                    $('.rightpane').animate({left: 540}, 'fast');
+                    $('.rightpane').animate({left: 440}, 'fast');
                     $('.fa fa-list').toggleClass('highlight');
                     $('.show_hide_buttons .fa-list').toggleClass('fa fa-list fa fa-th');
                     this.pos.show_left_buttons = false;
@@ -301,7 +249,7 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                 $('.categories_list').css('width', '0%');
                 $('.product-list-scroller').css('width', '100%');
             } else {
-                // only for mobile app
+                //TODO: only for mobile app
                 this.mobile_product_categories_widget = new mobile_product_categories(this, {
                     pos_categories: this.pos.pos_categories,
                 });
@@ -313,21 +261,25 @@ odoo.define('pos_retail.screen_product_list', function (require) {
                 $('.categories_list').css('width', '20%');
                 $('.product-list-scroller').css('width', '80%');
             }
-            $('input').click(function () {
-                self.gui.screen_instances['products'].order_widget.remove_event_keyboard();
-            });
         }
     });
 
     screens.ProductListWidget.include({
+        get_product_image_url: function (product) {
+            if (this.pos.config.hide_product_image) {
+                return null
+            } else {
+                return this._super(product);
+            }
+        },
         init: function (parent, options) {
             var self = this;
             this._super(parent, options);
             this.pos.bind('update:categories', function () {
                 self.renderElement();
             }, this);
-            // bind action only for v10
-            // we are only change price of items display, not loop and change all, lost many memory RAM
+            //TODO: bind action only for v10
+            //TODO: we are only change price of items display, not loop and change all, lost many memory RAM
             this.pos.bind('product:change_price_list', function (products) {
                 try {
                     var $products_element = $('.product .product-img .price-tag');

@@ -30,7 +30,7 @@ odoo.define('pos_retail.screen_products_return', function (require) {
                             setTimeout(function () {
                                 self.$('.searchbox input')[0].value = '';
                                 self.$('.searchbox input').focus();
-                            }, 1000);
+                            }, 2000);
                         }
                     }
                 }

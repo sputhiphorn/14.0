@@ -44,7 +44,7 @@
     </t>
 
     <t t-name="button_promotion">
-        <div class="left_button">
+        <div class="left_button" title="Click and choice Promotions Program need apply to your Client">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/promotions.png" class="pos_logo"/>
             </div>
@@ -55,7 +55,7 @@
     </t>
 
     <t t-name="button_remove_promotion">
-        <div class="left_button">
+        <div class="left_button" title="Remove all Promotions applied">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/trash.png" class="pos_logo"/>
             </div>
@@ -73,11 +73,11 @@
             <ul class="info-list">
                 <t t-set="number" t-value="1"/>
                 <t t-foreach="promotions" t-as="promotion">
-                    <li class="info promotion_active">
+                    <div class="info promotion_active">
                         <span class="line_number"><t t-esc="number"/>. </span>
                         <t t-esc="promotion['name']"/>
                         <t t-set="number" t-value="number + 1"/>
-                    </li>
+                    </div>
                 </t>
             </ul>
         </t>
@@ -97,9 +97,7 @@
         <t t-jquery=".summary" t-operation="append">
             <t t-if="widget.pos.promotions and widget.pos.promotions.length > 0">
                 <div class="promotion_details touch-scrollable scrollable-y">
-                    <li class="info">
-                        <div class="promotion_recommend_customer"/>
-                    </li>
+                    <div class="promotion_recommend_customer"/>
                 </div>
             </t>
         </t>
@@ -157,13 +155,5 @@
             </td>
         </t>
     </t>
-
-    <t t-extend="ClientListScreenWidget">
-        <t t-jquery="tr:eq(0)" t-operation="append">
-            <th>Point</th>
-            <th>Loyalty type</th>
-        </t>
-    </t>
-
 
 </templates>

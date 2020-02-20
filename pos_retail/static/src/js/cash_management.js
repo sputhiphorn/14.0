@@ -31,8 +31,8 @@ odoo.define('pos_retail.cash_management', function (require) {
                         body: 'Have something wrong, could not find your session'
                     })
                 }
-            }, function (type, err) {
-                calling.reject();
+            }, function (err) {
+                calling.reject(err);
                 self.pos.gui.show_popup('dialog', {
                     title: 'Warning',
                     body: 'Your session offline mode, could not calling odoo server'
@@ -86,11 +86,8 @@ odoo.define('pos_retail.cash_management', function (require) {
             if (self.options.pos_cashbox_line[0]['is_delete']) {
                 col5.innerHTML = col5html;
             }
-
         },
-
         onclick_cashboxdelete: function (e) {
-            var self = this;
             var tr = $(e.currentTarget).closest('tr');
             var record_id = tr.find('td:first-child').text();
             if (parseInt(record_id))
@@ -111,10 +108,13 @@ odoo.define('pos_retail.cash_management', function (require) {
                 }
             }
             document.getElementById("cashbox_total").innerHTML = total;
+            rpc.query({
+                model: 'account.bank.statement.cashbox',
+                method: 'remove_cashbox_line',
+                args: [0, parseInt(record_id)],
+            });
         },
-
         onchange_text: function (e) {
-            var self = this;
             var tr = $(e.currentTarget).closest('tr');
             var tr_id = tr.attr('id');
             var number = document.getElementById("cashbox_" + tr_id + "_number").value;
@@ -137,7 +137,37 @@ odoo.define('pos_retail.cash_management', function (require) {
     gui.define_popup({name: 'popup_balance', widget: popup_balance});
 
     var popup_money_control = PopupWidget.extend({
-        template: 'popup_money_control'
+        template: 'popup_money_control',
+        show: function (options) {
+            var self = this;
+            this.options = options;
+            this._super(options);
+        },
+        click_confirm: function () {
+            var fields = {};
+            this.$('.field').each(function (idx, el) {
+                fields[el.name] = el.value || false;
+            });
+            if (!fields['reason']) {
+                return this.wrong_input('input[name="reason"]', '(*) Reason is required');
+            } else {
+                this.passed_input('input[name="reason"]')
+            }
+            if (!fields['amount']) {
+                return this.wrong_input('input[name="amount"]', '(*) Amount is required');
+            } else {
+                this.passed_input('input[name="amount"]');
+            }
+            if (fields['amount'] <= 0) {
+                return this.wrong_input('input[name="amount"]', '(*) Amount could not smaller than 0');
+            } else {
+                this.passed_input('input[name="amount"]')
+            }
+            this.pos.gui.close_popup();
+            if (this.options.confirm) {
+                this.options.confirm.call(this, fields['reason'], fields['amount']);
+            }
+        }
     });
     gui.define_popup({name: 'popup_money_control', widget: popup_money_control});
 
@@ -147,7 +177,7 @@ odoo.define('pos_retail.cash_management', function (require) {
             'click .PutMoneyIn': 'put_money_in',
             'click .TakeMoneyOut': 'take_money_out',
             'click .SetClosingBalance': 'closing_balance',
-            'click .EndOfSession': 'enf_of_session',
+            'click .EndOfSession': 'end_of_session',
             'click .ValidateClosingControl': 'onclick_vcpentries',
             'click .printstatement': 'print_pos_session_report'
         }),
@@ -155,6 +185,16 @@ odoo.define('pos_retail.cash_management', function (require) {
             var self = this;
             var session = options.session;
             this.session = session;
+            if (this.session.state == 'closed') {
+                this.pos.gui.show_popup('popup_sale_summary_session_report', {
+                    title: 'Print Z-Report, Session Sale Summary',
+                    body: 'Are you want print Z-Report (Your Session Sale Summary',
+                    session_id: this.session.id,
+                    cancel: function () {
+                        self.pos.gui.close()
+                    }
+                })
+            }
             this._super(options);
             $('.cancel').click(function () {
                 self.pos.gui.close_popup();
@@ -195,23 +235,24 @@ odoo.define('pos_retail.cash_management', function (require) {
             self.pos.gui.show_popup('popup_money_control', {
                 'title': 'Take Money Out',
                 'body': 'Describe why you take money from the cash register: ',
-                confirm: function () {
-                    var values = {};
-                    values.reason = this.$('.reason').val();
-                    values.amount = this.$('.amount').val();
-                    values.session_id = self.pos.pos_session.id;
-                    rpc.query({
+                confirm: function (reason, amount) {
+                    var values = {
+                        reason: reason,
+                        amount: amount,
+                        session_id: self.pos.pos_session.id
+                    };
+                    return rpc.query({
                         model: 'cash.box.out',
                         method: 'cash_input_from_pos',
                         args: [0, values],
                     }).then(function (result) {
                         if (result)
-                            self.pos.gui.show_popup('error', {
+                            return self.pos.gui.show_popup('confirm', {
                                 'title': 'Take Money Out',
                                 'body': JSON.stringify(result),
                             });
                         else
-                            $('.session').trigger('click');
+                            return $('.session').trigger('click');
                     });
                 },
                 cancel: function () {
@@ -254,7 +295,11 @@ odoo.define('pos_retail.cash_management', function (require) {
                                     }
                                 }
                                 if (cell_count > 0)
-                                    values.push({'id': parseInt(id)});
+                                    values.push({
+                                        id: parseInt(id),
+                                        number: parseFloat(number),
+                                        coin_value: parseFloat(coin_value),
+                                    });
                             }
                         }
                         rpc.query({
@@ -283,19 +328,25 @@ odoo.define('pos_retail.cash_management', function (require) {
         onclick_vcpentries: function () {
             var self = this;
             var id = self.pos.pos_session.id;
+            this.gui.close_popup();
             rpc.query({
                 model: 'pos.session',
                 method: 'action_pos_session_validate',
                 args: [id],
-            }).then(function (result) {
-                self.gui.close_popup();
-                self.gui.close();
-            }, function (err, event) {
-                event.preventDefault();
+            }, {shadow: true}).done(function (result) {
+                return self.pos.gui.show_popup('popup_sale_summary_session_report', {
+                    title: 'Print Z-Report, Session Sale Summary',
+                    body: 'Are you want print Z-Report (Your Session Sale Summary',
+                    session_id: self.pos.pos_session.id,
+                    cancel: function () {
+                        self.pos.gui.close()
+                    }
+                })
+            }).fail(function (err) {
                 var err_msg = 'Please verify the details given or Check the Internet Connection./n';
                 if (err.data.message)
                     err_msg = err.data.message;
-                self.gui.show_popup('alert', {
+                return self.gui.show_popup('alert', {
                     'title': _t('Odoo Warning'),
                     'body': _t(err_msg),
                     cancel: function () {
@@ -303,17 +354,21 @@ odoo.define('pos_retail.cash_management', function (require) {
                 });
             });
         },
-        enf_of_session: function () {
+        end_of_session: function () {
             var self = this;
             var id = self.pos.pos_session.id;
+            var method = 'action_pos_session_close';
+            if (this.pos.server_version != 10) {
+                method = 'action_pos_session_closing_control'
+            }
+            this.gui.close_popup();
             rpc.query({
                 model: 'pos.session',
-                method: 'action_pos_session_closing_control',
+                method: method,
                 args: [id]
             }).then(function (result) {
                 $('.session').trigger('click');
-            }, function (err, event) {
-                event.preventDefault();
+            }).fail(function (err) {
                 var err_msg = 'Please verify the details given or Check the Internet Connection./n';
                 if (err.data.message)
                     err_msg = err.data.message;

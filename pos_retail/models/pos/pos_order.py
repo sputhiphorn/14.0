@@ -20,7 +20,7 @@ class pos_order(models.Model):
                                      'order_id',
                                      'promotion_id',
                                      string='Promotions')
-    ean13 = fields.Char('Ean13')
+    ean13 = fields.Char('Ean13', readonly=1)
     expire_date = fields.Datetime('Expired date')
     is_return = fields.Boolean('Is return')
     add_credit = fields.Boolean('Add credit')
@@ -28,13 +28,10 @@ class pos_order(models.Model):
     return_order_id = fields.Many2one('pos.order', 'Return of order')
     email = fields.Char('Email')
     email_invoice = fields.Boolean('Email invoice')
-    mrp_order_ids = fields.One2many('mrp.production', 'pos_id', 'Manufacturing orders', readonly=1)
-    plus_point = fields.Float(compute="_get_point", styring='Plus point')
-    redeem_point = fields.Float(compute="_get_point", styring='Redeem point')
+    plus_point = fields.Float('Plus point', readonly=1)
+    redeem_point = fields.Float('Redeem point', readonly=1)
     signature = fields.Binary('Signature', readonly=1)
-    invoice_journal_id = fields.Many2one('account.journal', 'Journal account', readonly=1)
     parent_id = fields.Many2one('pos.order', 'Parent Order', readonly=1)
-    sale_id = fields.Many2one('sale.order', 'Sale order', readonly=1)
     create_voucher = fields.Boolean('Credit voucher', readonly=1)
     partial_payment = fields.Boolean('Partial Payment')
     state = fields.Selection(selection_add=[
@@ -44,13 +41,17 @@ class pos_order(models.Model):
     margin = fields.Float(
         'Margin', compute='_compute_margin', store=True,
         digits=dp.get_precision('Product Price'))
-    location_id = fields.Many2one('stock.location', string="Location", required=True, related=False, readonly=0)
     lines = fields.One2many('pos.order.line', 'order_id', string='Order Lines',
                             states={'draft': [('readonly', False)], 'partial_payment': [('readonly', False)]},
                             readonly=True, copy=True)
-    booking_id = fields.Many2one('sale.order', 'Booking order',
+    sale_id = fields.Many2one('sale.order', 'Sale order', readonly=1)
+    booking_id = fields.Many2one('sale.order', 'Booking Order',
                                  help='This order covert from booking (quotation/sale) order', readonly=1)
-    picking_delayed = fields.Boolean('Picking delayed', readonly=1)
+    sale_journal = fields.Many2one('account.journal', string='Sales Journal', readonly=0, related=None, )
+    location_id = fields.Many2one('stock.location', string="Location", required=True, related=None, readonly=0)
+    pos_branch_id = fields.Many2one('pos.branch', string='Branch', readonly=1)
+    is_push_order_no_wait = fields.Boolean('Is Order no Wait')
+    currency_id = fields.Many2one('res.currency', string='Currency', readonly=1, related=False)
 
     @api.multi
     @api.depends('lines.margin')
@@ -68,25 +69,58 @@ class pos_order(models.Model):
     def write(self, vals):
         res = super(pos_order, self).write(vals)
         for order in self:
+            if vals.get('picking_id', None):
+                # TODO: we linked picking  to pos order
+                self.env.cr.execute(
+                    "UPDATE stock_picking SET pos_order_id=%s WHERE id=%s" % (order.id, vals.get('picking_id')))
             if vals.get('state', False) == 'paid':
-                for line in order.lines:
-                    vouchers = self.env['pos.voucher'].search([('pos_order_line_id', '=', line.id)])
-                    vouchers.write({'state': 'active'})  # active vouchers for customers can use, required paid done
-            if order.partner_id:  # sync credit, wallet balance to pos sessions
+                for line in order.lines:  # TODO active vouchers for customers can use, required paid done
+                    self.env.cr.execute(
+                        "UPDATE pos_voucher SET state='active' WHERE pos_order_line_id=%s" % (line.id))
+                order.pos_compute_loyalty_point()
+            if order.partner_id:  # TODO sync credit, wallet balance to pos sessions
                 self.env['pos.cache.database'].insert_data('res.partner', order.partner_id.id)
             self.env['pos.cache.database'].insert_data(self._inherit, order.id)
+            if order.partner_id:
+                pos_total_amount = 0
+                for order_bought in order.partner_id.pos_order_ids:
+                    pos_total_amount += order_bought.amount_total
+                type_will_add = self.env['res.partner.type'].get_type_from_total_amount(pos_total_amount)
+                if not type_will_add:
+                    type_will_add = 'Null'
+                self.env.cr.execute(
+                    "UPDATE res_partner SET pos_partner_type_id=%s, pos_total_amount=%s WHERE id=%s" % (
+                        type_will_add, pos_total_amount, order.partner_id.id))
         return res
 
     @api.model
     def create(self, vals):
+        session = self.env['pos.session'].browse(vals.get('session_id'))
+        SaleOrder = self.env['sale.order'].sudo()
+        if not vals.get('location_id', None):
+            vals.update({
+                'location_id': session.config_id.stock_location_id.id if session.config_id.stock_location_id else None
+            })
+        else:
+            location = self.env['stock.location'].browse(vals.get('location_id'))
+            location_company = location.company_id
+            if not location_company or location_company.id != self.env.user.company_id.id:
+                vals.update({
+                    'location_id': session.config_id.stock_location_id.id if session.config_id.stock_location_id else None
+                })
+        if not vals.get('sale_journal', None):
+            vals.update({'sale_journal': session.config_id.journal_id.id})
+        if session.config_id.pos_branch_id:
+            vals.update({'pos_branch_id': session.config_id.pos_branch_id.id})
         order = super(pos_order, self).create(vals)
         if vals.get('partial_payment', False):
             order.write({'state': 'partial_payment'})
         if order.create_voucher:
             self.env['pos.voucher'].create_voucher(order)
         if vals.get('booking_id', False):
-            booked_order = self.env['sale.order'].browse(vals.get('booking_id'))
-            booked_order.write({'state': 'booked'})
+            SaleOrder.browse(vals.get('booking_id')).write({'state': 'booked'})
+        if vals.get('sale_id', False):
+            SaleOrder.browse(vals.get('sale_id')).write({'state': 'done'})
         self.env['pos.cache.database'].insert_data(self._inherit, order.id)
         return order
 
@@ -118,8 +152,10 @@ class pos_order(models.Model):
 
     def _prepare_invoice(self):
         values = super(pos_order, self)._prepare_invoice()
-        if self.invoice_journal_id:
-            values['journal_id'] = self.invoice_journal_id.id
+        values.update({
+            'pos_order_id': self.id,
+            'journal_id': self.sale_journal.id
+        })
         return values
 
     @api.one
@@ -132,15 +168,6 @@ class pos_order(models.Model):
             'number': self.invoice_id.number
         }
 
-    @api.multi
-    def _get_point(self):
-        for order in self:
-            order.plus_point = 0
-            order.redeem_point = 0
-            for line in order.lines:
-                order.plus_point += line.plus_point
-                order.redeem_point += line.redeem_point
-
     def add_payment(self, data):
         # v12 check data have currency_id, will check company currency and line currency
         # if have not difference could not create
@@ -152,16 +179,6 @@ class pos_order(models.Model):
         res = super(pos_order, self).add_payment(data)
         self.env['pos.cache.database'].insert_data(self._inherit, self.id)
         return res
-
-    # method use for force picking done, function pos internal mode
-    @api.model
-    def pos_force_picking_done(self, picking_id):
-        picking = self.env['stock.picking'].browse(picking_id)
-        picking.action_assign()
-        picking.force_assign()
-        wrong_lots = self.set_pack_operation_lot(picking)
-        if not wrong_lots:
-            picking.action_done()
 
     def _action_create_invoice_line(self, line=False, invoice_id=False):
         # when cashiers change tax on pos order line (pos screen)
@@ -246,8 +263,8 @@ class pos_order(models.Model):
             order_fields.update({
                 'parent_id': ui_order['parent_id']
             })
-        if ui_order.get('invoice_journal_id', False):
-            order_fields['invoice_journal_id'] = ui_order.get('invoice_journal_id')
+        if ui_order.get('sale_journal', False):
+            order_fields['sale_journal'] = ui_order.get('sale_journal')
         if ui_order.get('ean13', False):
             order_fields.update({
                 'ean13': ui_order['ean13']
@@ -296,8 +313,10 @@ class pos_order(models.Model):
             order_fields.update({
                 'booking_id': ui_order['booking_id']
             })
-        if ui_order.get('picking_delayed', False):
-            order_fields.update({'picking_delayed': True})
+        if ui_order.get('currency_id', False):
+            order_fields.update({
+                'currency_id': ui_order['currency_id']
+            })
         return order_fields
 
     @api.model
@@ -333,9 +352,22 @@ class pos_order(models.Model):
 
     @api.model
     def create_from_ui(self, orders):
+        _logger.info('BEGIN create_from_ui %s' % self.env.user.login)
         order_to_invoice = []
+        queue_order_ids = []
+        push_order_no_wait = False
         for o in orders:
             data = o['data']
+            # TODO: v10 only dont merge
+            self.env.cr.execute(
+                "SELECT id FROM pos_order where pos_reference='%s'" % (
+                data['name']))
+            order_submited_ids = self.env.cr.fetchall()
+            if order_submited_ids and len(order_submited_ids) > 0:
+                order_submited_id = order_submited_ids[0][0]
+                _logger.error('%s have duplcate from pos' % data['name'])
+                if self.sudo().browse(order_submited_id).amount_total != data['amount_total']:
+                    data['name'] = data['name'] + '-Duplicate_of_OrderID_%s' % order_submited_id
             pos_session_id = data['pos_session_id']
             config = self.env['pos.session'].browse(pos_session_id).config_id
             to_invoice = o.get('to_invoice', False)
@@ -365,14 +397,20 @@ class pos_order(models.Model):
                         'promotion_price_by_quantity']:
                         new_line[key] = value
                 line_val[2] = new_line
-        order_ids = super(pos_order, self.with_context(
-                    picking_delayed=True)).create_from_ui(orders)
+            if config.push_order_no_wait:
+                push_order_no_wait = True
+                if to_invoice:
+                    self._match_payment_to_invoice(data)
+                queue_order_ids.append(self._process_order(data).id)
+        if push_order_no_wait:
+            self.browse(queue_order_ids).write({'is_push_order_no_wait': True})
+            return queue_order_ids
+        order_ids = super(pos_order, self).create_from_ui(orders)
         pos_orders = self.browse(order_ids)
         for order in pos_orders:
             order.pos_compute_loyalty_point()
-            self.create_picking_with_multi_variant(orders, order)
-            self.create_picking_combo(orders, order)
-            self.pos_made_manufacturing_order(order)
+            order.create_picking_variants()
+            order.create_picking_combo()
             """
                 * auto send email and receipt to customers
             """
@@ -394,34 +432,30 @@ class pos_order(models.Model):
                 threaded_synchronization.start()
         return order_ids
 
-    def create_picking(self): # we remove orders have picking delayed is true. only process realtime with picking delayed is false
-        if self.env.context.get('picking_delayed', False):
-            orders = self.filtered(lambda x: not x.picking_delayed)
-        else:
-            orders = self
-        res = super(pos_order, orders).create_picking()
-        return res
-
     @api.multi
-    def cron_job_auto_create_picking_delayed(self):
-        _logger.info('Begin cron_job_auto_create_picking_delayed()')
-        orders = self.search([
-            ('state', '!=', 'draft'),
-            ('picking_delayed', '=', True),
-            ('picking_id', '=', None)
-        ], order='date_order')
-        for order in orders:
-            order.sudo(order.user_id.id).with_context(
-                force_company=order.company_id.id).create_picking()
-            order.write({'picking_delayed': False})
-            _logger.info("Created picking for order ean13: %s" % (order.ean13))
+    def cron_auto_process_orders_no_wait(self):
+        orders = self.search([('is_push_order_no_wait', '=', True), ('state', '=', 'draft')])
+        if len(orders):
+            for order in orders:
+                try:
+                    _logger.info('====> Cron processing Order ID %s' % order.id)
+                    order.action_pos_order_paid()
+                    order.pos_compute_loyalty_point()
+                    order.create_picking_variants()
+                    order.create_picking_combo()
+                    if order.add_credit and order.amount_total < 0:
+                        order.add_credit(- order.amount_total)
+                    self.env.cr.commit()
+                except:
+                    _logger.error('====> Cron could not process Order ID %s' % order.id)
+                    continue
         return True
 
     @api.multi
-    def auto_invoice(self, order_id, order_ids=[]):
+    def auto_invoice(self, order_id, auto=False):
         with api.Environment.manage():
             """
-                * auto create invoice
+                Auto Invoice for Order
             """
             new_cr = registry(self._cr.dbname).cursor()
             self = self.with_env(self.env(cr=new_cr))
@@ -429,8 +463,6 @@ class pos_order(models.Model):
             pos_order.action_pos_order_invoice()
             pos_order.invoice_id.sudo().action_invoice_open()
             pos_order.account_move = pos_order.invoice_id.move_id
-            if pos_order.config_id.auto_register_payment:
-                pos_order.pos_order_auto_invoice_reconcile()
             new_cr.commit()
             new_cr.close()
         return True
@@ -449,89 +481,46 @@ class pos_order(models.Model):
             new_cr.close()
         return True
 
-    def pos_made_manufacturing_order(self, order):
-        """
-            * pos create mrp order
-            * if have bill of material config for product
-        """
-        version_info = odoo.release.version_info
-        for line in order.lines:
-            product_template = line.product_id.product_tmpl_id
-            if not product_template.manufacturing_out_of_stock:
-                continue
-            else:
-                mrp_orders = self.env['mrp.production'].sudo().search([('name', '=', order.name)])
-                if mrp_orders or not order.session_id.config_id.stock_location_id:
-                    continue
+    @api.multi
+    def action_pos_order_paid(self):
+        orders = self.filtered(lambda x: not x.partial_payment)
+        partial_orders = self.filtered(lambda x: x.partial_payment)
+        if orders:
+            super(pos_order, orders).action_pos_order_paid()
+        if partial_orders:
+            for order in partial_orders:
+                if order.test_paid():
+                    order.write({'state': 'paid'})
                 else:
-                    quantity_available = 0
-                    bom = product_template.bom_id
-                    product_id = line.product_id.id
-                    location_id = order.session_id.config_id.stock_location_id.id
-                    quants = self.env['stock.quant'].search(
-                        [('product_id', '=', product_id), ('location_id', '=', location_id)])
-                    if quants:
-                        quantity_available = 0
-                        if version_info and version_info[0] in [11, 12]:
-                            quantity_available = sum([q.quantity for q in quants])
-                        if version_info and version_info[0] == 10:
-                            quantity_available = sum([q.qty for q in quants])
-                    pos_min_qty = product_template.pos_min_qty
-                    if quantity_available <= pos_min_qty:
-                        pos_manufacturing_quantity = product_template.pos_manufacturing_quantity
-                        vals = {
-                            'name': self.name,
-                            'product_id': line.product_id.id,
-                            'product_qty': pos_manufacturing_quantity,
-                            'bom_id': bom.id,
-                            'product_uom_id': bom.product_uom_id.id if bom.product_uom_id else line.product_id.uom_id.id,
-                            'pos_id': self.id,
-                            'origin': self.name,
-                            'pos_user_id': self.env.user.id,
-                        }
-                        try:
-                            mrp_order = self.env['mrp.production'].create(vals)
-                            if product_template.manufacturing_state == 'manual':
-                                mrp_order.action_assign()
-                            if product_template.manufacturing_state == 'auto':
-                                mrp_order.action_assign()
-                                mrp_order.button_plan()
-                                work_orders = self.env['mrp.workorder'].search([('production_id', '=', mrp_order.id)])
-                                if work_orders:
-                                    work_orders.button_start()
-                                    work_orders.record_production()
-                                else:
-                                    produce_wizard = self.env['mrp.product.produce'].with_context({
-                                        'active_id': mrp_order.id,
-                                        'active_ids': [mrp_order.id],
-                                    }).create({
-                                        'product_qty': pos_manufacturing_quantity,
-                                    })
-                                    produce_wizard.do_produce()
-                                mrp_order.button_mark_done()
-                        except:
-                            continue
-        return True
+                    order.write({'state': 'partial_payment'})
+                if not order.picking_id:
+                    order.create_picking()
 
     def pos_compute_loyalty_point(self):
-        """
-            * auto update customer point of loyalty program
-        """
-        if self.partner_id:
-            pos_loyalty_point = self.partner_id.pos_loyalty_point
-            if self.plus_point:
-                pos_loyalty_point += self.plus_point
-            if self.redeem_point:
-                pos_loyalty_point += self.redeem_point
-            loyalty_categories = self.env['pos.loyalty.category'].search([])
-            pos_loyalty_type = self.partner_id.pos_loyalty_type.id if self.partner_id.pos_loyalty_type else None
-            for loyalty_category in loyalty_categories:
-                if pos_loyalty_point >= loyalty_category.from_point and pos_loyalty_point <= loyalty_category.to_point:
-                    pos_loyalty_type = loyalty_category.id
-            return self.partner_id.sudo().write(
-                {'pos_loyalty_point': pos_loyalty_point, 'pos_loyalty_type': pos_loyalty_type})
-        else:
-            return False
+        if self.partner_id and self.config_id and self.config_id.loyalty_id and (self.redeem_point or self.plus_point):
+            self.env.cr.execute("select id from pos_loyalty_point where order_id=%s and type='plus'" % self.id)
+            have_plus = self.env.cr.fetchall()
+            self.env.cr.execute("select id from pos_loyalty_point where order_id=%s and type='redeem'" % self.id)
+            have_redeem = self.env.cr.fetchall()
+            vals_point = {
+                'loyalty_id': self.config_id.loyalty_id.id,
+                'order_id': self.id,
+                'partner_id': self.partner_id.id,
+                'state': 'ready',
+                'is_return': self.is_return if self.is_return else False,
+            }
+            if self.plus_point and len(have_plus) == 0:
+                vals_point.update({
+                    'point': self.plus_point,
+                    'type': 'plus'
+                })
+                self.env['pos.loyalty.point'].create(vals_point)
+            if self.redeem_point and len(have_redeem) == 0:
+                vals_point.update({
+                    'point': self.redeem_point,
+                    'type': 'redeem'
+                })
+                self.env['pos.loyalty.point'].create(vals_point)
 
     @api.model
     def add_credit(self, amount):
@@ -576,143 +565,155 @@ class pos_order(models.Model):
                                         line_id.id)
         return True
 
-    def create_picking_combo(self, orders, order):
-        version_info = odoo.release.version_info
-        for o in orders:
-            warehouse_obj = self.env['stock.warehouse']
-            move_object = self.env['stock.move']
-            picking_obj = self.env['stock.picking']
-            product_obj = self.env['product.product']
-            if o['data']['name'] == order.pos_reference:
-                combo_items = []
-                picking_type = order.picking_type_id
-                if not picking_type:
-                    continue
-                location_id = order.location_id.id
-                address = order.partner_id.address_get(['delivery']) or {}
-                if order.partner_id:
-                    destination_id = order.partner_id.property_stock_customer.id
-                else:
-                    if (not picking_type) or (not picking_type.default_location_dest_id):
-                        customerloc, supplierloc = warehouse_obj._get_partner_locations()
-                        destination_id = customerloc.id
-                    else:
-                        destination_id = picking_type.default_location_dest_id.id
-                if o['data'] and o['data'].get('lines', []):
-                    for line in o['data']['lines']:
-                        line = line[2]
-                        if line and line.get('combo_items', []):
-                            for item in line['combo_items']:
-                                item['quantity'] = item['quantity'] * line['qty']
-                                combo_items.append(item)
-                            del line['combo_items']
-                if combo_items:
-                    picking_vals = {
-                        'name': order.name + '/Combo',
-                        'origin': order.name,
-                        'partner_id': address.get('delivery', False),
-                        'date_done': order.date_order,
-                        'picking_type_id': picking_type.id,
-                        'company_id': order.company_id.id,
-                        'move_type': 'direct',
-                        'note': order.note or "",
-                        'location_id': location_id,
-                        'location_dest_id': destination_id,
-                        'pos_order_id': order.id,
-                    }
-                    order_picking = picking_obj.create(picking_vals)
-                    for item in combo_items:
-                        product = product_obj.browse(item['product_id'][0])
-                        move_vals = {
-                            'name': order.name,
-                            'product_uom': item['uom_id'][0] if item['uom_id'] else product.uom_id.id,
-                            'picking_id': order_picking.id,
-                            'picking_type_id': picking_type.id,
-                            'product_id': product.id,
-                            'product_uom_qty': abs(item['quantity']),
-                            'state': 'draft',
-                            'location_id': location_id,
-                            'location_dest_id': destination_id,
-                        }
-                        move = move_object.create(move_vals)
-                        if item.get('lot_number', None):
-                            self.create_stock_move_with_lot(move, item['lot_number'])
-                    order_picking.action_assign()
-                    if version_info and version_info[0] in [10, 11]:
-                        order_picking.force_assign()
-                    wiz = None
-                    if version_info and version_info[0] in [11, 12]:
-                        wiz = self.env['stock.immediate.transfer'].create({'pick_ids': [(4, order_picking.id)]})
-                    if version_info and version_info[0] == 10:
-                        wiz = self.env['stock.immediate.transfer'].create({'pick_id': order_picking.id})
-                    if wiz:
-                        wiz.process()
-        return True
-
-    def create_picking_with_multi_variant(self, orders, order):
-        for o in orders:
+    def create_picking_combo(self):
+        lines_included_combo_items = self.lines.filtered(
+            lambda l: len(l.combo_item_ids) > 0)
+        if lines_included_combo_items:
+            _logger.info('Start create_picking_combo()')
             warehouse_obj = self.env['stock.warehouse']
             move_object = self.env['stock.move']
             moves = move_object
             picking_obj = self.env['stock.picking']
-            product_obj = self.env['product.product']
-            variants = []
-            if o['data']['name'] == order.pos_reference:
-                picking_type = order.picking_type_id
-                if not picking_type:
-                    continue
-                location_id = order.location_id.id
-                address = order.partner_id.address_get(['delivery']) or {}
-                if order.partner_id:
-                    destination_id = order.partner_id.property_stock_customer.id
+            picking_type = self.picking_type_id
+            location_id = self.location_id.id
+            if self.partner_id:
+                destination_id = self.partner_id.property_stock_customer.id
+            else:
+                if (not picking_type) or (not picking_type.default_location_dest_id):
+                    customerloc, supplierloc = warehouse_obj._get_partner_locations()
+                    destination_id = customerloc.id
                 else:
-                    if (not picking_type) or (not picking_type.default_location_dest_id):
-                        customerloc, supplierloc = warehouse_obj._get_partner_locations()
-                        destination_id = customerloc.id
-                    else:
-                        destination_id = picking_type.default_location_dest_id.id
-                if o['data'] and o['data'].get('lines', False):
-                    for line in o['data']['lines']:
-                        if line[2] and line[2].get('variants', False):
-                            for var in line[2]['variants']:
-                                if var.get('product_id'):
-                                    variants.append(var)
-                            del line[2]['variants']
-                if variants:
-                    picking_vals = {
-                        'name': order.name + '/Variant',
-                        'origin': order.name,
-                        'partner_id': address.get('delivery', False),
-                        'date_done': order.date_order,
+                    destination_id = picking_type.default_location_dest_id.id
+            is_return = self.is_return
+            name = self.name
+            if is_return:
+                name += '- Return Combo'
+            else:
+                name += '- Combo'
+            picking_vals = {
+                'name': name,
+                'origin': self.name,
+                'partner_id': self.partner_id.id if self.partner_id else None,
+                'date_done': self.date_order,
+                'picking_type_id': picking_type.id,
+                'company_id': self.company_id.id,
+                'move_type': 'direct',
+                'note': self.note or "",
+                'location_id': location_id if not is_return else destination_id,
+                'location_dest_id': destination_id if not is_return else location_id,
+                'pos_order_id': self.id,
+            }
+            picking_combo = picking_obj.create(picking_vals)
+            for order_line in lines_included_combo_items:
+                for combo_item in order_line.combo_item_ids:
+                    product = combo_item.product_id
+                    order_line_qty = order_line.qty
+                    move = move_object.create({
+                        'name': self.name,
+                        'product_uom': product.uom_id.id,
+                        'picking_id': picking_combo.id,
                         'picking_type_id': picking_type.id,
-                        'company_id': order.company_id.id,
-                        'move_type': 'direct',
-                        'note': order.note or "",
-                        'location_id': location_id,
-                        'location_dest_id': destination_id,
-                        'pos_order_id': order.id,
-                    }
-                    order_picking = picking_obj.create(picking_vals)
-                    for variant in variants:
-                        product = product_obj.browse(variant.get('product_id')[0])
-                        move = move_object.create({
-                            'name': order.name,
-                            'product_uom': variant['uom_id'] and variant['uom_id'][0] if variant.get('uom_id',
-                                                                                                     []) else product.uom_id.id,
-                            'picking_id': order_picking.id,
-                            'picking_type_id': picking_type.id,
-                            'product_id': product.id,
-                            'product_uom_qty': abs(variant['quantity']),
-                            'state': 'draft',
-                            'location_id': location_id,
-                            'location_dest_id': destination_id,
-                        })
-                        moves |= move
-                    order_picking.action_assign()
-                    order_picking.force_assign()
-                    wiz = self.env['stock.immediate.transfer'].create({'pick_ids': [(4, order_picking.id)]})
-                    wiz.process()
+                        'product_id': product.id,
+                        'product_uom_qty': abs(combo_item.quantity * order_line_qty),
+                        'state': 'draft',
+                        'location_id': location_id if not is_return else destination_id,
+                        'location_dest_id': destination_id if not is_return else location_id,
+                    })
+                    moves |= move
+            self._force_picking_done(picking_combo)
         return True
+
+    def create_picking_variants(self):
+        lines_included_variants = self.lines.filtered(
+            lambda l: len(l.variant_ids) > 0)
+        required_create_picking = False
+        for line in lines_included_variants:
+            if required_create_picking:
+                break
+            for combo_item in line.combo_item_ids:
+                if combo_item.product_id and combo_item.product_id.type == 'product':
+                    required_create_picking = True
+                    break
+        if lines_included_variants and required_create_picking:
+            _logger.info('begin create_picking_variants')
+            warehouse_obj = self.env['stock.warehouse']
+            move_object = self.env['stock.move']
+            moves = move_object
+            picking_obj = self.env['stock.picking']
+            picking_type = self.picking_type_id
+            location_id = self.location_id.id
+            if self.partner_id:
+                destination_id = self.partner_id.property_stock_customer.id
+            else:
+                if (not picking_type) or (not picking_type.default_location_dest_id):
+                    customerloc, supplierloc = warehouse_obj._get_partner_locations()
+                    destination_id = customerloc.id
+                else:
+                    destination_id = picking_type.default_location_dest_id.id
+            is_return = self.is_return
+            picking_vals = {
+                'name': self.name + '- Variants',
+                'origin': self.name,
+                'partner_id': self.partner_id.id if self.partner_id else None,
+                'date_done': self.date_order,
+                'picking_type_id': picking_type.id,
+                'company_id': self.company_id.id,
+                'move_type': 'direct',
+                'note': self.note or "",
+                'location_id': location_id if not is_return else destination_id,
+                'location_dest_id': destination_id if not is_return else location_id,
+                'pos_order_id': self.id,
+            }
+            picking_variants = picking_obj.create(picking_vals)
+            for order_line in lines_included_variants:
+                for variant_item in order_line.variant_ids:
+                    if not variant_item.product_id:
+                        continue
+                    product = variant_item.product_id
+                    order_line_qty = order_line.qty
+                    move = move_object.create({
+                        'name': self.name,
+                        'product_uom': product.uom_id.id,
+                        'picking_id': picking_variants.id,
+                        'picking_type_id': picking_type.id,
+                        'product_id': product.id,
+                        'product_uom_qty': abs(variant_item.quantity * order_line_qty),
+                        'state': 'draft',
+                        'location_id': location_id if not is_return else destination_id,
+                        'location_dest_id': destination_id if not is_return else location_id,
+                    })
+                    moves |= move
+            self._force_picking_done(picking_variants)
+        return True
+
+    def create_picking_return(self, origin='',
+                              partner_id=None, picking_type_id=None, location_dest_id=None,
+                              note='', pos_order_id=None, lines=[]):
+        warehouse_obj = self.env['stock.warehouse']
+        move_object = self.env['stock.move']
+        moves = move_object
+        picking_obj = self.env['stock.picking']
+        customerloc, supplierloc = warehouse_obj._get_partner_locations()
+        location_id = customerloc.id
+        picking_vals = {
+            'origin': origin,
+            'partner_id': partner_id,
+            'picking_type_id': picking_type_id,
+            'company_id': self.env.user.company_id.id,
+            'move_type': 'direct',
+            'note': note,
+            'location_id': location_id,
+            'location_dest_id': location_dest_id,
+            'pos_order_id': pos_order_id,
+        }
+        picking = picking_obj.create(picking_vals)
+        for line in lines:
+            if not line.get('uom_id', None):
+                line.update({'product_uom': self.env['product.product'].browse(line['product_id']).uom_id.id})
+            line.update({'location_id': location_id})
+            line.update({'picking_id': picking.id})
+            moves |= move_object.create(line)
+        return self.env['pos.order'].browse(pos_order_id)._force_picking_done(picking)
 
     def create_stock_move_with_lot(self, stock_move=None, lot_name=None):
         """set lot serial combo items"""
@@ -779,22 +780,32 @@ class pos_order(models.Model):
 class pos_order_line(models.Model):
     _inherit = "pos.order.line"
 
-    plus_point = fields.Float('Plus')
-    redeem_point = fields.Float('Redeem')
+    plus_point = fields.Float('Plus Point', readonly=1)
+    redeem_point = fields.Float('Redeem Point', readonly=1)
     partner_id = fields.Many2one('res.partner', related='order_id.partner_id', string='Partner', readonly=1)
     promotion = fields.Boolean('Promotion', readonly=1)
-    promotion_reason = fields.Char(string='Promotion reason', readonly=1)
-    is_return = fields.Boolean('Return')
-    combo_items = fields.Text('Combo', readonly=1)
+    promotion_reason = fields.Char(string='Promotion Reason', readonly=1)
+    is_return = fields.Boolean('Is Return')
+    combo_item_ids = fields.Many2many('pos.combo.item',
+                                      'order_line_combo_item_rel',
+                                      'line_id', 'combo_id',
+                                      string='Combo Items', readonly=1)
     order_uid = fields.Text('order_uid', readonly=1)
-    user_id = fields.Many2one('res.users', 'Sale person')
+    user_id = fields.Many2one('res.users', 'Sale Person')
     session_info = fields.Text('session_info', readonly=1)
     uid = fields.Text('uid', readonly=1)
-    variants = fields.Text('variants', readonly=1)
-    tag_ids = fields.Many2many('pos.tag', 'pos_order_line_tag_rel', 'line_id', 'tag_id', string='Tags')
+    variant_ids = fields.Many2many('product.variant',
+                                   'order_line_variant_rel',
+                                   'line_id', 'variant_id',
+                                   string='Variant Items', readonly=1)
+    tag_ids = fields.Many2many('pos.tag',
+                               'pos_order_line_tag_rel',
+                               'line_id',
+                               'tag_id',
+                               string='Tags')
     note = fields.Text('Note')
-    discount_reason = fields.Char('Discount reason')
-    medical_insurance = fields.Boolean('Discount medical insurance')
+    discount_reason = fields.Char('Discount Reason')
+    medical_insurance = fields.Boolean('Discount Medical Insurance')
     margin = fields.Float(
         'Margin', compute='_compute_multi_margin', store=True,
         multi='multi_margin', digits=dp.get_precision('Product Price'))
@@ -802,7 +813,10 @@ class pos_order_line(models.Model):
         'Cost Price', compute='_compute_multi_margin', store=True,
         multi='multi_margin', digits=dp.get_precision('Product Price'))
     reward_id = fields.Many2one('pos.loyalty.reward', 'Reward')
-    packaging_id = fields.Many2one('product.packaging', string='Package/box')
+    packaging_id = fields.Many2one('product.packaging', string='Package/Box')
+    config_id = fields.Many2one('pos.config', related='order_id.session_id.config_id', string="Point of Sale")
+    pos_branch_id = fields.Many2one('pos.branch', string='Branch', readonly=1)
+    manager_user_id = fields.Many2one('res.users', 'Manager Approved')
 
     @api.multi
     @api.depends('product_id', 'qty', 'price_subtotal')
@@ -812,15 +826,9 @@ class pos_order_line(models.Model):
                 line.purchase_price = 0
                 line.margin = 0
             else:
-                if line.uom_id and line.uom_id.id != line.product_id.uom_id.id:
-                    purchase_price = line.product_id.standard_price
-                    line.purchase_price = line.product_id.uom_id._compute_price(purchase_price, line.uom_id)
-                    line.margin = line.price_subtotal - (
-                            line.purchase_price * line.qty)
-                else:
-                    line.purchase_price = line.product_id.standard_price
-                    line.margin = line.price_subtotal - (
-                            line.product_id.standard_price * line.qty)
+                line.purchase_price = line.product_id.standard_price
+                line.margin = line.price_subtotal - (
+                        line.product_id.standard_price * line.qty)
 
     @api.model
     def create(self, vals):
@@ -833,8 +841,10 @@ class pos_order_line(models.Model):
         if 'voucher' in vals:
             del vals['voucher']
         order = self.env['pos.order'].browse(vals['order_id'])
+        if order.pos_branch_id:
+            vals.update({'pos_branch_id': order.pos_branch_id.id})
         po_line = super(pos_order_line, self).create(vals)
-        if po_line.product_id.is_voucher and voucher_val:
+        if voucher_val:
             today = datetime.today()
             if voucher_val.get('period_days', None):
                 end_date = today + timedelta(days=voucher_val['period_days'])
@@ -845,7 +855,7 @@ class pos_order_line(models.Model):
                 'customer_id': order.partner_id and order.partner_id.id if order.partner_id else None,
                 'start_date': fields.Datetime.now(),
                 'end_date': end_date,
-                'state': 'draft',
+                'state': 'active',
                 'value': po_line.price_subtotal_incl,
                 'apply_type': voucher_val.get('apply_type', None) if voucher_val.get('apply_type',
                                                                                      None) else 'fixed_amount',
@@ -870,3 +880,14 @@ class pos_order_line(models.Model):
         for record in self:
             self.env['pos.cache.database'].remove_record(self._inherit, record.id)
         return super(pos_order_line, self).unlink()
+
+    def get_purchased_lines_histories_by_partner_id(self, partner_id):
+        orders = self.env['pos.order'].sudo().search([('partner_id', '=', partner_id)], order='create_date DESC')
+        fields_sale_load = self.env['pos.cache.database'].sudo().get_fields_by_model('pos.order.line')
+        vals = []
+        if orders:
+            order_ids = [order.id for order in orders]
+            lines = self.sudo().search([('order_id', 'in', order_ids)])
+            return lines.read(fields_sale_load)
+        else:
+            return vals

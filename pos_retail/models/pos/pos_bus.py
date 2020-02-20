@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 from odoo import api, models, fields, registry
-import json
 import logging
-import threading
 
 _logger = logging.getLogger(__name__)
 
 class pos_bus(models.Model):
     _name = "pos.bus"
-    _description = "Branch/Store of shops"
+    _description = "Point Sync"
 
     name = fields.Char('Location Name', required=1)
     user_id = fields.Many2one('res.users', string='Sale admin')
@@ -16,10 +14,10 @@ class pos_bus(models.Model):
 
 class pos_bus_log(models.Model):
     _name = "pos.bus.log"
-    _description = "Transactions of Branch/Store"
+    _description = "Transactions of Point Sync"
 
     user_id = fields.Many2one('res.users', 'Send from', required=1, ondelete='cascade', index=True)
-    bus_id = fields.Many2one('pos.bus', 'Branch/Store', required=1, ondelete='cascade', index=True)
+    bus_id = fields.Many2one('pos.bus', 'Point Sync', required=1, ondelete='cascade', index=True)
     action = fields.Selection([
         ('selected_order', 'Change order'),
         ('new_order', 'Add order'),

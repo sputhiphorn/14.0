@@ -10,13 +10,233 @@ odoo.define('pos_retail.model', function (require) {
     var round_pr = utils.round_precision;
     var _t = core._t;
     var rpc = require('pos.rpc');
-    var big_data = require('pos_retail.big_data');
-    var base = require('pos_retail.base');
     var session = require('web.session');
     var time = require('web.time');
 
     var _super_PosModel = models.PosModel.prototype;
     models.PosModel = models.PosModel.extend({
+        generate_wrapped_name: function (name) {
+            var MAX_LENGTH = 24; // 40 * line ratio of .6
+            var wrapped = [];
+            var current_line = "";
+
+            while (name.length > 0) {
+                var space_index = name.indexOf(" ");
+
+                if (space_index === -1) {
+                    space_index = name.length;
+                }
+
+                if (current_line.length + space_index > MAX_LENGTH) {
+                    if (current_line.length) {
+                        wrapped.push(current_line);
+                    }
+                    current_line = "";
+                }
+
+                current_line += name.slice(0, space_index + 1);
+                name = name.slice(space_index + 1);
+            }
+
+            if (current_line.length) {
+                wrapped.push(current_line);
+            }
+
+            return wrapped;
+        },
+        update_onhand_by_product: function (product) {
+            var self = this;
+            this.product_need_update = product;
+            return rpc.query({
+                model: 'pos.cache.database',
+                method: 'get_onhand_by_product_id',
+                args: [product.id],
+                context: {}
+            }, {shadow: true}).then(function (datas) {
+                var list = [];
+                if (!datas || !self.stock_location_by_id) {
+                    return false;
+                }
+                for (var location_id in datas) {
+                    var location = self.stock_location_by_id[location_id];
+                    if (location) {
+                        list.push({
+                            'id': location['id'],
+                            'location': location['name'],
+                            'qty_available': datas[location_id]['qty_available']
+                        })
+                    }
+                }
+                if (list.length <= 0) {
+                    self.gui.show_popup('dialog', {
+                        title: 'Warning',
+                        body: 'Product type not Stockable Product'
+                    })
+                } else {
+                    return self.gui.show_popup('popup_selection_extend', {
+                        title: 'All Quantity Available of Product ' + self.product_need_update.name,
+                        fields: ['location', 'qty_available'],
+                        sub_datas: list,
+                        sub_template: 'stocks_list',
+                        confirm: function (location_id) {
+                            self.location_id = location_id;
+                            var location = self.stock_location_by_id[location_id];
+                            setTimeout(function () {
+                                return self.gui.show_popup('number', {
+                                    'title': _t('Update Product Quantity of ' + self.product_need_update.name + ' to Location ' + location.name),
+                                    'value': 0,
+                                    'confirm': function (new_quantity) {
+                                        var new_quantity = parseFloat(new_quantity);
+                                        return rpc.query({
+                                            model: 'stock.location',
+                                            method: 'pos_update_stock_on_hand_by_location_id',
+                                            args: [location.id, {
+                                                product_id: self.product_need_update.id,
+                                                new_quantity: new_quantity,
+                                                location_id: location.id
+                                            }],
+                                            context: {}
+                                        }, {shadow: true}).done(function (values) {
+                                            self._do_update_quantity_onhand([self.product_need_update.id]);
+                                            return self.gui.show_popup('confirm', {
+                                                title: values['product'],
+                                                body: values['location'] + ' have new on hand: ' + values['quantity'],
+                                                color: 'success'
+                                            })
+                                        }).fail(function (error) {
+                                            return self.query_backend_fail(error);
+                                        })
+                                    }
+                                })
+                            }, 200)
+                        }
+                    })
+                }
+            }).fail(function (error) {
+                return self.query_backend_fail(error);
+            })
+        },
+        show_purchased_histories: function (client) {
+            var self = this;
+            if (!client) {
+                client = this.get_client();
+            }
+            if (!client) {
+                this.gui.show_popup('dialog', {
+                    title: 'Warning',
+                    body: 'We could not find purchased orders histories, please set client first'
+                });
+                this.gui.show_screen('clientlist')
+            } else {
+                var orders = this.db.get_pos_orders().filter(function (order) {
+                    return order.partner_id && order.partner_id[0] == client['id']
+                });
+                if (orders.length) {
+                    return this.gui.show_popup('popup_selection_extend', {
+                        title: 'Purchased Histories of ' + client.name,
+                        fields: ['name', 'ean13', 'date_order', 'pos_reference'],
+                        sub_datas: orders,
+                        sub_template: 'purchased_orders',
+                        body: 'Please select one sale person',
+                        confirm: function (order_id) {
+                            var order = self.db.order_by_id[order_id];
+                            self.gui.screen_instances['pos_orders_screen'].order_selected = order;
+                            self.gui.show_screen('pos_orders_screen')
+                        }
+                    })
+                } else {
+                    this.gui.show_popup('confirm', {
+                        title: 'Warning',
+                        body: 'Your POS not active POS Order Management or Current Client have not any Purchased Orders'
+                    })
+                }
+            }
+        },
+        _get_stock_on_hand_by_location_ids: function (product_ids = [], location_ids = []) {
+            var response = new $.Deferred();
+            rpc.query({
+                model: 'stock.location',
+                method: 'get_stock_datas',
+                args: [[], product_ids, location_ids],
+                context: {}
+            }, {shadow: true, timeout: 60000}).then(function (datas) {
+                response.resolve(datas)
+            }).fail(function (error) {
+                response.reject(error)
+            });
+            return response;
+        },
+        _validate_by_manager: function (action_will_do_if_passing_security) {
+            var self = this;
+            var manager_validate = [];
+            _.each(this.config.manager_ids, function (user_id) {
+                var user = self.user_by_id[user_id];
+                if (user) {
+                    manager_validate.push({
+                        label: user.name,
+                        item: user
+                    })
+                }
+            });
+            if (manager_validate.length == 0) {
+                this.gui.show_popup('confirm', {
+                    title: 'Warning',
+                    body: 'Your POS Setting / Tab Security not set Managers Approve',
+                })
+            }
+            return this.gui.show_popup('selection', {
+                title: 'Choice Manager Validate',
+                body: 'Only Manager can approve this Discount, please ask him',
+                list: manager_validate,
+                confirm: function (manager_user) {
+                    if (!manager_user.pos_security_pin) {
+                        return self.gui.show_popup('confirm', {
+                            title: 'Warning',
+                            body: user.name + ' have not set pos security pin before. Please set pos security pin first'
+                        })
+                    } else {
+                        return self.gui.show_popup('ask_password', {
+                            title: 'Pos Security Pin of Manager',
+                            body: _t('This action need validate by you, please input your pos secuirty pin'),
+                            confirm: function (password) {
+                                if (manager_user['pos_security_pin'] != password) {
+                                    self.gui.show_popup('dialog', {
+                                        title: 'Error',
+                                        body: 'Pos Security Pin of ' + manager_user.name + ' Incorrect !'
+                                    });
+                                    setTimeout(function () {
+                                        self._validate_by_manager(action_will_do_if_passing_security);
+                                    }, 1000)
+                                } else {
+                                    eval(action_will_do_if_passing_security);
+                                }
+                            }
+                        });
+                    }
+                }
+            })
+        },
+        _search_read_by_model_and_id: function (model, ids) {
+            var status = new $.Deferred();
+            var object = this.get_model(model);
+            if (model && object.fields) {
+                rpc.query({
+                    model: model,
+                    method: 'search_read',
+                    domain: [['id', 'in', ids]],
+                    fields: object.fields
+                }).then(function (datas) {
+                    status.resolve(datas)
+                }).fail(function (error) {
+                    status.reject(error)
+                })
+            } else {
+                status.resolve([])
+            }
+            return status
+
+        }
+        ,
         _update_cart_qty_by_order: function (product_ids) {
             var order = this.get_order();
             if (!order) {
@@ -39,7 +259,8 @@ odoo.define('pos_retail.model', function (require) {
                 }
             }
 
-        },
+        }
+        ,
         _get_active_pricelist: function () {
             var current_order = this.get_order();
             var default_pricelist = this.default_pricelist;
@@ -58,7 +279,8 @@ odoo.define('pos_retail.model', function (require) {
                     return null
                 }
             }
-        },
+        }
+        ,
         _get_default_pricelist: function () {
             var current_pricelist = this.default_pricelist;
             return current_pricelist
@@ -77,7 +299,7 @@ odoo.define('pos_retail.model', function (require) {
             this.server_version = session.server_version_info[0];
             this.is_mobile = odoo.is_mobile;
             var wait_journal = this.get_model('account.journal');
-            wait_journal.fields.push('pos_method_type');
+            wait_journal.fields.push('pos_method_type', 'currency_id');
             var _super_wait_journal_loaded = wait_journal.loaded;
             wait_journal.loaded = function (self, journals) {
                 self.journals = journals;
@@ -124,8 +346,6 @@ odoo.define('pos_retail.model', function (require) {
                 'multi_uom',
                 'multi_variant',
                 'supplier_barcode',
-                'manufacturing_out_of_stock',
-                'manufacturing_state',
                 'is_combo',
                 'combo_limit',
                 'uom_po_id',
@@ -139,13 +359,13 @@ odoo.define('pos_retail.model', function (require) {
                 'type',
                 'cross_selling',
                 'standard_price',
-                'bus_ids',
                 'pos_sequence',
                 'is_voucher',
                 'minimum_list_price',
                 'sale_with_package',
                 'qty_warning_out_stock',
                 'write_date',
+                'company_id',
             );
             this.bus_location = null;
             var partner_model = this.get_model('res.partner');
@@ -188,7 +408,8 @@ odoo.define('pos_retail.model', function (require) {
             });
             var wait_res_company = this.get_model('res.company');
             wait_res_company.fields.push('logo');
-        },
+        }
+        ,
         add_new_order: function () {
             var self = this;
             _super_PosModel.add_new_order.apply(this, arguments);
@@ -208,7 +429,8 @@ odoo.define('pos_retail.model', function (require) {
                     self.gui.show_screen('clientlist');
                 }, 500);
             }
-        },
+        }
+        ,
         formatDateTime: function (value, field, options) {
             if (value === false) {
                 return "";
@@ -217,7 +439,8 @@ odoo.define('pos_retail.model', function (require) {
                 value = value.clone().add(session.getTZOffset(value), 'minutes');
             }
             return value.format(time.getLangDatetimeFormat());
-        },
+        }
+        ,
         format_date: function (date) { // covert datetime backend to pos
             if (date) {
                 return this.formatDateTime(
@@ -225,33 +448,35 @@ odoo.define('pos_retail.model', function (require) {
             } else {
                 return ''
             }
-        },
+        }
+        ,
         get_config: function () {
             return this.config;
-        },
+        }
+        ,
         get_packaging_by_product: function (product) {
             if (!this.packaging_by_product_id || !this.packaging_by_product_id[product.id]) {
                 return false;
             } else {
                 return true
             }
-        },
-        get_location: function () {
-            if (!this.location) {
-                var location = this.stock_location_by_id[this.config.stock_location_id[0]];
-                if (location) {
-                    return location
-                } else {
-                    this.stock_location_by_id[this.shop.id] = this.shop;
-                    return this.shop
-                }
-
+        }
+        ,
+        get_locations: function () {
+            if (this.stock_location_ids.length != 0) {
+                return this.stock_location_ids
             } else {
-                return this.location;
+                return []
             }
-        },
-        set_location: function (location) {
-            this.location = location;
+        }
+        ,
+        get_default_sale_journal: function () {
+            var invoice_journal_id = this.config.invoice_journal_id;
+            if (!invoice_journal_id) {
+                return null
+            } else {
+                return invoice_journal_id[0];
+            }
         },
         /*
             We not use exports.Product because if you have 1 ~ 10 millions data products
@@ -321,7 +546,8 @@ odoo.define('pos_retail.model', function (require) {
                 return false;
             });
             return price;
-        },
+        }
+        ,
         /*
             This function return product amount with default tax set on product > sale > taxes
          */
@@ -365,28 +591,31 @@ odoo.define('pos_retail.model', function (require) {
             } else {
                 return price
             }
-        },
+        }
+        ,
         get_bus_location: function () {
             return this.bus_location
-        },
-        query_backend_fail: function (type, error) {
-            if (type && type.code === 200 && type.message && type.data && type.data.message) {
-                return this.gui.show_popup('dialog', {
-                    title: type.message,
-                    body: type.data.message,
+        }
+        ,
+        query_backend_fail: function (error) {
+            if (error && error.code === 200 && error.data && error.data.message) {
+                return this.gui.show_popup('confirm', {
+                    title: error.message,
+                    body: error.data.message,
                 })
             } else {
-                return this.gui.show_popup('dialog', {
+                return this.gui.show_popup('confirm', {
                     title: 'Error',
-                    body: 'Odoo offline mode',
+                    body: 'Odoo offline mode or backend codes have issues. Please contact your admin system',
                 })
             }
-        },
+        }
+        ,
         scan_product: function (parsed_code) {
             /*
                     This function only return true or false
                     Because if barcode passed mapping data of products, customers ... will return true
-                    Else all return false and popup wanrning message
+                    Else all return false and popup warning message
              */
             var self = this;
             console.log('-> scan barcode: ' + parsed_code.code);
@@ -456,10 +685,11 @@ odoo.define('pos_retail.model', function (require) {
                                 }
                                 return true
                             } else {
-                                return this.gui.show_popup('dialog', {
+                                this.gui.show_popup('dialog', {
                                     title: 'Warning',
                                     body: 'Lot name is correct but product of lot not available on POS'
                                 });
+                                return false;
                             }
                         }
                     });
@@ -473,7 +703,7 @@ odoo.define('pos_retail.model', function (require) {
                         var order_line = selectedOrder.get_selected_orderline();
                         if (order_line) {
                             if (lot.replace_product_public_price && lot.public_price) {
-                                order_line.set_unit_price(lot['public_price'])
+                                order_line.set_unit_price(lot['public_price']);
                                 order_line.price_manually_set = true;
                             }
                             $('.packlot-line-input').remove(); // fix on safari
@@ -497,7 +727,7 @@ odoo.define('pos_retail.model', function (require) {
                     }
                 }
             } else if (products_by_supplier_barcode) { // scan code by suppliers code
-                var products = []
+                var products = [];
                 for (var i = 0; i < products_by_supplier_barcode.length; i++) {
                     products.push({
                         label: products_by_supplier_barcode[i]['display_name'],
@@ -620,17 +850,20 @@ odoo.define('pos_retail.model', function (require) {
                 }
             }
             return _super_PosModel.scan_product.apply(this, arguments);
-        },
+        }
+        ,
         set_table: function (table) {
             _super_PosModel.set_table.apply(this, arguments);
             this.trigger('update:table-list');
-        },
+        }
+        ,
         _save_to_server: function (orders, options) {
             if (this.hide_pads) {
                 $('.pad').click();
             }
             return _super_PosModel._save_to_server.call(this, orders, options);
-        },
+        }
+        ,
         push_order: function (order, opts) {
             var pushed = _super_PosModel.push_order.apply(this, arguments);
             if (!order) {
@@ -645,22 +878,29 @@ odoo.define('pos_retail.model', function (require) {
                     if (journal.pos_method_type == 'wallet') {
                         client.wallet = -amount;
                     }
-                    if (journal.credit) {
+                    if (journal.pos_method_type == 'credit') {
                         client.balance -= line.get_amount();
                     }
                 }
             }
             return pushed;
-        },
+        }
+        ,
         get_balance: function (client) {
             var balance = round_pr(client.balance, this.currency.rounding);
             return (Math.round(balance * 100) / 100).toString()
-        },
+        }
+        ,
         get_wallet: function (client) {
             var wallet = round_pr(client.wallet, this.currency.rounding);
             return (Math.round(wallet * 100) / 100).toString()
-        },
+        }
+        ,
         add_return_order: function (order, lines) {
+            // TODO:
+            //      - return order have redeem point
+            //      - return order have promotion
+            //      - return order have line qty smaller than 0
             var self = this;
             var order_return_id = order['id'];
             var order_selected_state = order['state'];
@@ -698,10 +938,28 @@ odoo.define('pos_retail.model', function (require) {
                     console.error('Could not find product: ' + line_return.product_id[0]);
                     continue
                 }
-                var line = new models.Orderline({}, {pos: this, order: order, product: product});
+                var line = new models.Orderline({}, {
+                    pos: this,
+                    order: order,
+                    product: product,
+                });
+                order.orderlines.add(line);
+                if (line_return['combo_item_ids']) {
+                    line.set_combo_items(line_return['combo_item_ids'])
+                }
+                if (line_return['variant_ids']) {
+                    line.set_variants(line_return['variant_ids'])
+                }
+                if (line_return['tag_ids']) {
+                    line.set_tags(line_return['tag_ids'])
+                }
                 line['is_return'] = true;
                 line.set_unit_price(price);
                 line.price_manually_set = true;
+                if (line_return.discount)
+                    line.set_discount(line_return.discount);
+                if (line_return.discount_reason)
+                    line.discount_reason = line_return.discount_reason;
                 if (line_return['new_quantity']) {
                     quantity = -line_return['new_quantity']
                 } else {
@@ -718,7 +976,7 @@ odoo.define('pos_retail.model', function (require) {
                     line.credit_point = line_return.redeem_point;
                 }
                 line.set_quantity(quantity, 'keep price when return');
-                order.orderlines.add(line);
+
             }
             if (order_selected_state == 'partial_payment') {
                 rpc.query({
@@ -739,7 +997,7 @@ odoo.define('pos_retail.model', function (require) {
                         'timer': 2500,
                     });
                     def.resolve()
-                }).fail(function (type, error) {
+                }).fail(function (error) {
                     def.reject(error)
                 });
             } else {
@@ -761,7 +1019,8 @@ odoo.define('pos_retail.model', function (require) {
                 def.resolve()
             }
             return def;
-        },
+        }
+        ,
         set_start_order: function () { // lock unlock order
             var self = this;
             var res = _super_PosModel.set_start_order.apply(this, arguments);
@@ -803,7 +1062,8 @@ odoo.define('pos_retail.model', function (require) {
             if (this.config.staff_level == 'manager') {
                 $('.deleteorder-button').removeClass('oe_hidden');
             }
-        },
+        }
+        ,
         load_server_data: function () {
             var self = this;
             return _super_PosModel.load_server_data.apply(this, arguments).then(function () {
@@ -811,7 +1071,7 @@ odoo.define('pos_retail.model', function (require) {
                     model: 'res.currency',
                     method: 'search_read',
                     domain: [['active', '=', true]],
-                    fields: ['name', 'symbol', 'position', 'rounding', 'rate']
+                    fields: ['name', 'symbol', 'position', 'rounding', 'rate', 'converted_currency']
                 }).then(function (currencies) {
                     self.currency_by_id = {};
                     self.currencies = currencies;
@@ -830,7 +1090,8 @@ odoo.define('pos_retail.model', function (require) {
                     }
                 });
             })
-        },
+        }
+        ,
         load_server_data_by_model: function (model) {
             var self = this;
             var loaded = new $.Deferred();
@@ -880,7 +1141,7 @@ odoo.define('pos_retail.model', function (require) {
         }
     });
 
-    // validate click change minus
+// validate click change minus
     var _super_NumpadState = models.NumpadState.prototype;
     models.NumpadState = models.NumpadState.extend({
         switchSign: function () {
@@ -913,15 +1174,15 @@ odoo.define('pos_retail.model', function (require) {
         }
     });
 
-    // only v11 and 12
-    var _super_product = models.Product.prototype;
+    var _super_product = models.Product.prototype; // TODO: only odoo 11 and 12 have this model, dont merge
     models.Product = models.Product.extend({
         get_price: function (pricelist, quantity) {
             if (!pricelist) {
-                return self.lst_price;
+                return this.lst_price;
             } else {
                 return _super_product.get_price.apply(this, arguments);
             }
         }
     })
-});
+})
+;

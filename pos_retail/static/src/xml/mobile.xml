@@ -46,7 +46,7 @@
                     </t>
                 </div>
                 <div class="searchbox">
-                    <input placeholder="Search Products" class="search-products"/>
+                    <input placeholder="Search Products" class="search-products" title="Keyboard: s, Clear search box: ESC"/>
                     <span class="search-clear"></span>
                 </div>
             </header>
@@ -54,13 +54,13 @@
     </t>
 
     <t t-name="mobile_widget">
-        <div class="oe_status shop_logo">
+        <div class="oe_status shop_logo" title="Switch Mobile Mode">
             <img class="logo_shop_header" src="/pos_retail/static/src/icons/devices.png"/>
         </div>
     </t>
 
     <t t-name="pc_widget">
-        <div class="shop_logo">
+        <div class="shop_logo" title="Switch PC Mode">
             <img class="logo_shop_header" src="/pos_retail/static/src/icons/devices.png"/>
         </div>
     </t>

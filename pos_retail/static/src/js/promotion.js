@@ -12,7 +12,269 @@ odoo.define('pos_retail.promotion', function (require) {
     var exports = {};
     var Backbone = window.Backbone;
     var bus = require('pos_retail.core_bus');
+    var time = require('web.time');
 
+    models.load_models([
+        {
+            model: 'pos.promotion',
+            fields: [
+                'name',
+                'start_date',
+                'end_date',
+                'type',
+                'product_id',
+                'discount_lowest_price',
+                'product_ids',
+                'minimum_items',
+                'discount_first_order',
+                'special_customer_ids',
+                'promotion_birthday',
+                'promotion_birthday_type',
+                'promotion_group',
+                'promotion_group_ids',
+            ],
+            domain: function (self) {
+                return [
+                    ['state', '=', 'active'],
+                    ['start_date', '<=', time.date_to_str(new Date()) + " " + time.time_to_str(new Date())],
+                    ['end_date', '>=', time.date_to_str(new Date()) + " " + time.time_to_str(new Date())],
+                    ['id', 'in', self.config.promotion_ids]
+                ]
+            },
+            promotion: true,
+            loaded: function (self, promotions) {
+                var promotion_applied = [];
+                promotions.forEach(function (promotion) {
+                    if (self.config.promotion_ids.indexOf(promotion['id']) >= 0) {
+                        promotion_applied.push(promotion);
+                    }
+                });
+                self.promotions = promotion_applied;
+                self.promotion_by_id = {};
+                self.promotion_ids = [];
+                var i = 0;
+                while (i < promotions.length) {
+                    self.promotion_by_id[promotions[i].id] = promotions[i];
+                    self.promotion_ids.push(promotions[i].id);
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.discount.order',
+            fields: ['minimum_amount', 'discount', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, discounts) {
+                self.promotion_discount_order_by_id = {};
+                self.promotion_discount_order_by_promotion_id = {};
+                var i = 0;
+                while (i < discounts.length) {
+                    self.promotion_discount_order_by_id[discounts[i].id] = discounts[i];
+                    if (!self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]]) {
+                        self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]] = [discounts[i]]
+                    } else {
+                        self.promotion_discount_order_by_promotion_id[discounts[i].promotion_id[0]].push(discounts[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.discount.category',
+            fields: ['category_id', 'discount', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, discounts_category) {
+                self.promotion_by_category_id = {};
+                var i = 0;
+                while (i < discounts_category.length) {
+                    self.promotion_by_category_id[discounts_category[i].category_id[0]] = discounts_category[i];
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.discount.quantity',
+            fields: ['product_id', 'quantity', 'discount', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, discounts_quantity) {
+                self.promotion_quantity_by_product_id = {};
+                var i = 0;
+                while (i < discounts_quantity.length) {
+                    if (!self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]]) {
+                        self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]] = [discounts_quantity[i]]
+                    } else {
+                        self.promotion_quantity_by_product_id[discounts_quantity[i].product_id[0]].push(discounts_quantity[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.gift.condition',
+            fields: ['product_id', 'minimum_quantity', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, gift_conditions) {
+                self.promotion_gift_condition_by_promotion_id = {};
+                var i = 0;
+                while (i < gift_conditions.length) {
+                    if (!self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]]) {
+                        self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]] = [gift_conditions[i]]
+                    } else {
+                        self.promotion_gift_condition_by_promotion_id[gift_conditions[i].promotion_id[0]].push(gift_conditions[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.gift.free',
+            fields: ['product_id', 'quantity_free', 'promotion_id', 'type'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, gifts_free) {
+                self.promotion_gift_free_by_promotion_id = {};
+                var i = 0;
+                while (i < gifts_free.length) {
+                    if (!self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]]) {
+                        self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]] = [gifts_free[i]]
+                    } else {
+                        self.promotion_gift_free_by_promotion_id[gifts_free[i].promotion_id[0]].push(gifts_free[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.discount.condition',
+            fields: ['product_id', 'minimum_quantity', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, discount_conditions) {
+                self.promotion_discount_condition_by_promotion_id = {};
+                var i = 0;
+                while (i < discount_conditions.length) {
+                    if (!self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]]) {
+                        self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]] = [discount_conditions[i]]
+                    } else {
+                        self.promotion_discount_condition_by_promotion_id[discount_conditions[i].promotion_id[0]].push(discount_conditions[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.discount.apply',
+            fields: ['product_id', 'discount', 'promotion_id', 'type'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, discounts_apply) {
+                self.promotion_discount_apply_by_promotion_id = {};
+                var i = 0;
+                while (i < discounts_apply.length) {
+                    if (!self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]]) {
+                        self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]] = [discounts_apply[i]]
+                    } else {
+                        self.promotion_discount_apply_by_promotion_id[discounts_apply[i].promotion_id[0]].push(discounts_apply[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.price',
+            fields: ['product_id', 'minimum_quantity', 'price_down', 'promotion_id'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, prices) {
+                self.promotion_price_by_promotion_id = {};
+                var i = 0;
+                while (i < prices.length) {
+                    if (!self.promotion_price_by_promotion_id[prices[i].promotion_id[0]]) {
+                        self.promotion_price_by_promotion_id[prices[i].promotion_id[0]] = [prices[i]]
+                    } else {
+                        self.promotion_price_by_promotion_id[prices[i].promotion_id[0]].push(prices[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.special.category',
+            fields: ['category_id', 'type', 'count', 'discount', 'promotion_id', 'product_id', 'qty_free'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, promotion_lines) {
+                self.promotion_special_category_by_promotion_id = {};
+                var i = 0;
+                while (i < promotion_lines.length) {
+                    if (!self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]]) {
+                        self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]] = [promotion_lines[i]]
+                    } else {
+                        self.promotion_special_category_by_promotion_id[promotion_lines[i].promotion_id[0]].push(promotion_lines[i])
+                    }
+                    i++;
+                }
+            }
+        }, {
+            model: 'pos.promotion.multi.buy',
+            fields: ['promotion_id', 'product_id', 'list_price', 'qty_apply'],
+            condition: function (self) {
+                return self.promotion_ids && self.promotion_ids.length > 0;
+            },
+            domain: function (self) {
+                return [['promotion_id', 'in', self.promotion_ids]]
+            },
+            promotion: true,
+            loaded: function (self, multi_buy) {
+                self.multi_buy = multi_buy;
+                self.multi_buy_by_product_id = {};
+                for (var i = 0; i < multi_buy.length; i++) {
+                    var rule = multi_buy[i];
+                    self.multi_buy_by_product_id[rule['product_id'][0]] = rule;
+                }
+            }
+        }
+    ], {after: 'pos.config'})
     exports.pos_sync_prmotions = Backbone.Model.extend({
         initialize: function (pos) {
             this.pos = pos;
@@ -30,7 +292,7 @@ odoo.define('pos_retail.promotion', function (require) {
                     if (channel == 'pos.sync.promotions') {
                         var promotions_model = _.filter(this.pos.models, function (model) {
                             return model.promotion
-                        })
+                        });
                         if (promotions_model) {
                             for (var i = 0; i < promotions_model.length; i++) {
                                 var model = promotions_model[i];
@@ -302,18 +564,6 @@ odoo.define('pos_retail.promotion', function (require) {
                         total_promotion_line += 1;
                     }
                 }
-                if (applied_promotion == false) {
-                    return this.pos.gui.show_popup('dialog', {
-                        title: 'Warning',
-                        body: 'Have not any promotion applied',
-                    });
-                } else {
-                    return this.pos.gui.show_popup('dialog', {
-                        title: 'Great job',
-                        body: 'Applied total ' + total_promotion_line + ' promotions',
-                        color: 'success'
-                    });
-                }
             }
         },
         remove_all_buyer_promotion_line: function () {
@@ -338,13 +588,6 @@ odoo.define('pos_retail.promotion', function (require) {
                         total_removed += 1
                     }
                 }
-            }
-            if (total_removed > 0) {
-                this.pos.gui.show_popup('dialog', {
-                    title: 'Done',
-                    body: 'Total promotion lines: ' + total_removed + ' has removed',
-                    color: 'success'
-                })
             }
         },
         product_quantity_by_product_id: function () {
@@ -431,7 +674,8 @@ odoo.define('pos_retail.promotion', function (require) {
                         }
                     }
                     if (promotion['promotion_birthday_type'] == 'week') {
-                        var birthday_date = new Date(client['birthday_date']).getTime();
+                        var parts = client['birthday_date'].split('-');
+                        var birthday_date = new Date(new Date().getFullYear() + '-' + parts[1] + '-' + parts[0]).getTime() + 86400000;
                         var startOfWeek = moment().startOf('week').toDate().getTime() + 86400000;
                         var endOfWeek = moment().endOf('week').toDate().getTime() + 86400000;
                         if (startOfWeek <= birthday_date && birthday_date <= endOfWeek) {
@@ -730,18 +974,28 @@ odoo.define('pos_retail.promotion', function (require) {
             /*
                 3. Promotion discount by quantities of product
             */
+            var check = this.checking_apply_discount_filter_by_quantity_of_product(promotion)
+            if (check == false) {
+                return;
+            }
             if (this.orderlines.models.length == 0) {
                 return;
             }
-            var quantity_by_product_id = this.product_quantity_by_product_id();
+            var quantity_by_product_id = {}
             var product = this.pos.db.get_product_by_id(promotion.product_id[0]);
-            if (!product) {
-                return this.pos.gui.show_popup('dialog', {
-                    title: 'Warning',
-                    body: 'Product ' + promotion.product_id[1] + ' not active on POS'
-                })
+            var i = 0;
+            var lines = this.orderlines.models;
+            while (i < lines.length) {
+                var line = lines[i];
+                if (!quantity_by_product_id[line.product.id]) {
+                    quantity_by_product_id[line.product.id] = line.quantity;
+                } else {
+                    quantity_by_product_id[line.product.id] += line.quantity;
+                }
+                i++;
             }
             for (var product_id in quantity_by_product_id) {
+                product_id = parseInt(product_id)
                 var promotion_lines = this.pos.promotion_quantity_by_product_id[product_id];
                 if (!promotion_lines) {
                     continue;
@@ -749,20 +1003,21 @@ odoo.define('pos_retail.promotion', function (require) {
                 var quantity_tmp = 0;
                 var promotion_line = null;
                 var j = 0;
-                for (j in promotion_lines) {
-                    if (quantity_tmp <= promotion_lines[j].quantity && quantity_by_product_id[product_id] >= promotion_lines[j].quantity && promotion_lines[j].promotion_id[0] == promotion['id']) {
-                        promotion_line = promotion_lines[j];
-                        quantity_tmp = promotion_lines[j].quantity
+                for (var number_index_of_array in promotion_lines) {
+                    var condition = quantity_tmp <= promotion_lines[number_index_of_array].quantity && quantity_by_product_id[product_id] >= promotion_lines[number_index_of_array].quantity;
+                    if (condition && promotion_lines[number_index_of_array]['product_id'][0] == product_id && promotion_lines[number_index_of_array]['promotion_id'][0] == promotion['id']) {
+                        promotion_line = promotion_lines[number_index_of_array];
+                        quantity_tmp = promotion_lines[number_index_of_array].quantity
                     }
                 }
                 var lines = this.orderlines.models;
                 var amount_total_by_product = 0;
-                for (var i = 0; i < lines.length; i++) {
-                    var line = lines[i];
+                for (var x = 0; x < lines.length; x++) {
+                    var line = lines[x];
                     if (line.promotion) {
                         continue
                     }
-                    if (line.product.id == product_id && !line.promotio) {
+                    if (line.product.id == product_id && !line.promotion) {
                         if (this.pos.config.iface_tax_included === 'total') {
                             amount_total_by_product += line.get_price_with_tax() * (1 - line.get_discount() / 100)
                         } else {
@@ -771,10 +1026,10 @@ odoo.define('pos_retail.promotion', function (require) {
                     }
                 }
                 if (amount_total_by_product != 0 && promotion_line) {
-                    this.add_promotion_line(product, -amount_total_by_product / 100 * promotion_line.discount, 1, {
+                    this.add_promotion(product, -amount_total_by_product / 100 * promotion_line.discount, 1, {
                         promotion_discount_by_quantity: true,
                         promotion: true,
-                        promotion_reason: 'Discount ' + promotion_line.discount + ' % when ' + promotion_line.product_id[1] + ' have quantity bigger or equal ' + promotion_line.quantity,
+                        promotion_reason: 'Discount ' + promotion_line.discount + ' % when ' + promotion_line.product_id[1] + ' have quantity greater or equal ' + promotion_line.quantity,
                     })
                 }
             }

@@ -54,9 +54,9 @@ odoo.define('pos_retail.screen_single', function (require) {
                 for (var i = 0; i < orderlines.length; i++) {
                     var line = orderlines[i];
                     var pos_categ_id = line['product']['pos_categ_id']
-                    if (pos_categ_id && pos_categ_id.length == 2) {
-                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0])
-                        var category = this.pos.db.category_by_id[root_category_id]
+                    if (pos_categ_id && pos_categ_id.length == 2 && order.get_root_category_by_category_id(pos_categ_id[0]) && this.pos.db.category_by_id[order.get_root_category_by_category_id(pos_categ_id[0])]) {
+                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0]);
+                        var category = this.pos.db.category_by_id[root_category_id];
                         var category_name = category['name'];
                         if (!orderlines_by_category_name[category_name]) {
                             orderlines_by_category_name[category_name] = [line];
@@ -93,6 +93,31 @@ odoo.define('pos_retail.screen_single', function (require) {
             if (!this.pos.config.mobile_responsive) {
                 this.$('.pos-sale-ticket').replaceWith('');
                 this.$('.screen-content').append(qweb.render('PosTicket', this.get_receipt_data()));
+                var self = this;
+                setTimeout(function () {
+                    try {
+                        var order = self.pos.get_order();
+                        if (order && order['ean13'] && self.pos.config.barcode_receipt) {
+                            self.$('img[id="barcode"]').removeClass('oe_hidden');
+                            JsBarcode("#barcode", order['ean13'], {
+                                format: "EAN13",
+                                displayValue: true,
+                                fontSize: 14
+                            });
+                        }
+                        if (order.index_number_order && self.pos.config.show_order_unique_barcode) {
+                            self.$('img[id="barcode_order_unique"]').removeClass('oe_hidden');
+                            JsBarcode("#barcode_order_unique", order['index_number_order'], {
+                                format: "EAN13",
+                                displayValue: true,
+                                fontSize: 14
+                            });
+                        }
+                    } catch (error) {
+                        console.error(error)
+                    }
+                }, 200)
+
             }
         },
         show_ticket: function () {

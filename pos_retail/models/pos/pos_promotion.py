@@ -50,11 +50,6 @@ class pos_promotion(models.Model):
     special_category_ids = fields.One2many('pos.promotion.special.category', 'promotion_id', 'Special Category')
     discount_lowest_price = fields.Float('Discount (%)', help='Discount n(%) of product lowest price of order lines')
     multi_buy_ids = fields.One2many('pos.promotion.multi.buy', 'promotion_id', 'Multi Buy')
-    config_ids = fields.Many2many('pos.config',
-                                  'pos_config_promotion_rel',
-                                  'promotion_id',
-                                  'config_id',
-                                  string='POS config')
     product_ids = fields.Many2many('product.product', 'promotion_product_rel', 'promotion_id', 'product_id',
                                    string='Products group', domain=[('available_in_pos', '=', True)])
     minimum_items = fields.Integer('Minimum items',

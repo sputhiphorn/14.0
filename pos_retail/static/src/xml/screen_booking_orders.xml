@@ -24,7 +24,7 @@
                                 <div class="row">
                                     <span class="label voucher-label">Signature <span class="input-required"> (*) </span></span>
                                     <div class="col-sm-10">
-                                        <div class="pos_signature"/>
+                                        <div class="pos_signature" name="pos_signature"/>
                                     </div>
                                 </div>
                             </t>
@@ -32,7 +32,7 @@
                                 <span class="label voucher-label">Notes</span>
                                 <div class="col-sm-10">
                                     <div class="form-group label-floating is-empty">
-                                        <input class='form-control sale_order_field note' id="note" t-att-value="widget.pos.get_order().note"/>
+                                        <input class='form-control sale_order_field note' name="note" t-att-value="widget.pos.get_order().note"/>
                                     </div>
                                 </div>
                             </div>
@@ -40,7 +40,7 @@
                                 <label class="label voucher-label">Payment term</label>
                                 <div class="col-sm-7">
                                     <t t-if="widget.pos.payments_term">
-                                        <select class='form-control voucher-select sale_order_field payment_term_id' id="payment_term_id">
+                                        <select class='form-control voucher-select sale_order_field payment_term_id' name="payment_term_id">
                                             <t t-foreach='widget.pos.payments_term' t-as='term'>
                                                 <option t-att-value='term.id' t-att-selected="widget.pos.get_order().get_client()['property_payment_term_id'] ? ((widget.pos.get_order().get_client()['property_payment_term_id'] and widget.pos.get_order().get_client()['property_payment_term_id'][0] === term.id) ? true : undefined) : undefined">
                                                     <t t-esc='term.name'/>
@@ -50,8 +50,9 @@
                                     </t>
                                 </div>
                             </div>
+                            <span class="card-issue"/>
                             <div class="form-footer text-center">
-                                <div class="btn btn-success pull-right confirm">
+                                <div class="btn btn-success pull-right create">
                                     <i class="fa fa-check"/> Create
                                 </div>
                                 <div class="btn btn-danger pull-left cancel">
@@ -66,7 +67,7 @@
     </t>
 
     <t t-name="button_booking_order">
-        <div class="left_button">
+        <div class="left_button" title="Create Booking Order and save backend, when customer come, click Booked Order and find Orders">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/booking.png" class="pos_logo"/>
             </div>
@@ -77,7 +78,7 @@
     </t>
 
     <t t-name="button_go_sale_orders_screen">
-        <div class="left_button">
+        <div class="left_button" title="Show all Booked Orders create from Sale Menu and POS Sessions">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/booked.png" class="pos_logo"/>
             </div>
@@ -101,7 +102,7 @@
                                 <span class="label voucher-label">Amount total</span>
                                 <div class="col-sm-10">
                                     <div class="form-group label-floating is-empty">
-                                        <input class='form-control' t-att-value="widget.format_currency(widget.pos.get_order().get_total_with_tax())" name="id" hidden="hidden" disabled="disabled"/>
+                                        <input class='form-control' t-att-value="widget.format_currency(widget.pos.get_order().get_total_with_tax())" hidden="hidden" disabled="disabled"/>
                                     </div>
                                 </div>
                             </div>
@@ -141,14 +142,14 @@
                                 <div class="row">
                                     <span class="label voucher-label">Signature <span class="input-required"> (*) </span></span>
                                     <div class="col-sm-10">
-                                        <div class="pos_signature"/>
+                                        <div class="pos_signature" name="pos_signature"/>
                                     </div>
                                 </div>
                             </t>
                             <div class="row">
                                 <span class="label voucher-label">PriceList <span class="input-required"> (*)</span></span>
                                 <div class="col-sm-10">
-                                     <select class='form-control voucher-select' id='pricelist_id'>
+                                     <select class='form-control voucher-select' name='pricelist_id' id="pricelist_id">
                                         <t t-if="widget.pos.pricelists">
                                             <t t-foreach='widget.pos.pricelists' t-as='pricelist'>
                                                 <option t-att-value='pricelist.id' t-att-selected="pricelist['id'] ? ((widget.options.pricelist and pricelist.id === widget.options.pricelist['id']) ? true : undefined) : undefined">
@@ -168,9 +169,9 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <span class="label voucher-label">Payment Journal</span>
+                                <span class="label voucher-label">Payment Partial Journal</span>
                                 <div class="col-sm-10">
-                                     <select class='form-control voucher-select' id='payment_partial_journal_id'>
+                                     <select class='form-control voucher-select' name='payment_partial_journal_id' id="payment_partial_journal_id">
                                         <t t-if="widget.pos.cashregisters">
                                             <t t-foreach='widget.pos.cashregisters' t-as='cashregister'>
                                                 <option t-att-value='cashregister.journal_id[0]'>
@@ -182,10 +183,10 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <label class="label voucher-label">Payment Method</label>
+                                <label class="label voucher-label" style="margin-left: 10px">Payment Method</label>
                                 <div class="col-sm-10">
                                     <div class="form-group label-floating is-empty">
-                                        <select class='form-control voucher-select' id='payment_method_id'>
+                                        <select class='form-control voucher-select' name='payment_method_id' id="payment_method_id">
                                             <t t-if="widget.pos.payment_methods">
                                                 <t t-foreach='widget.pos.payment_methods' t-as='method'>
                                                     <option t-att-value='method.id'>
@@ -197,6 +198,7 @@
                                     </div>
                                 </div>
                             </div>
+                            <span class="card-issue"/>
                             <div class="form-footer text-right">
                                 <div class="btn btn-success pull-right confirm">
                                     <i class="fa fa-check"/> Accept
@@ -214,7 +216,7 @@
 
 
     <t t-name="button_create_sale_order">
-        <div class="left_button">
+        <div class="left_button" title="Create Quotation/Sale Order">
             <div class="button-icon">
                 <img src="/pos_retail/static/src/icons/shopping_cart.png" class="pos_logo"/>
             </div>
@@ -264,15 +266,16 @@
                                         <thead>
                                             <tr>
                                                 <th><a href="#" class="sort sort_by_sale_order_id">ID</a></th>
-                                                <th><a href="#" class="sort sort_by_create_date">Create date</a></th>
+                                                <th><a href="#" class="sort sort_by_create_date">Create Date</a></th>
                                                 <th><a href="#" class="sort sort_by_sale_order_name">Name</a></th>
                                                 <th><a href="#" class="sort sort_by_sale_order_origin">Origin</a></th>
+                                                <th><a href="#" class="sort sort_by_sale_order_sale_person">Sale Person</a></th>
                                                 <th><a href="#" class="sort sort_by_sale_order_partner_name">Partner</a></th>
-                                                <th><a href="#" class="sort sort_by_sale_order_date_order">Date order</a></th>
+                                                <th><a href="#" class="sort sort_by_sale_order_date_order">Date Order</a></th>
                                                 <th><a href="#" class="sort sort_by_sale_order_payment_partial_amount">Partial</a></th>
-                                                <th><a href="#" class="sort sort_by_sale_order_amount_tax">Tax</a></th>
-                                                <th><a href="#" class="sort sort_by_sale_order_amount_total">Total</a></th>
-                                                <th><a href="#" class="sort sort_by_sale_order_state">State</a></th>
+                                                <th class="text-right"><a href="#" class="sort sort_by_sale_order_amount_tax">Tax</a></th>
+                                                <th class="text-right"><a href="#" class="sort sort_by_sale_order_amount_total">Total</a></th>
+                                                <th class="text-right"><a href="#" class="sort sort_by_sale_order_state">State</a></th>
                                             </tr>
                                         </thead>
                                         <tbody class='client-list-contents sale_orders_table'>
@@ -330,6 +333,9 @@
                 </t>
             </td>
             <td>
+                <t t-esc='sale.sale_person'/>
+            </td>
+            <td>
                 <t t-if="sale.partner">
                     <t t-esc='sale.partner.name'/>
                 </t>
@@ -353,9 +359,9 @@
                     N/A
                 </t>
             </td>
-            <td><t t-esc='widget.format_currency(sale.amount_tax)'/></td>
-            <td><t t-esc='widget.format_currency(sale.amount_total)'/></td>
-            <td>
+            <td class="text-right"><t t-esc='widget.format_currency(sale.amount_tax)'/></td>
+            <td class="text-right"><t t-esc='widget.format_currency(sale.amount_total)'/></td>
+            <td class="text-right">
                 <t t-if="sale.state == 'draft'">Quotation</t>
                 <t t-if="sale.state == 'sent'">Quotation Sent</t>
                 <t t-if="sale.state == 'sale'">Sales Order</t>
@@ -446,7 +452,7 @@
                         </div>
                     </t>
                     <div class='client-detail state'>
-                        <span class='label'>Partial paid</span>
+                        <span class='label'>Partial Payment</span>
                         <t t-esc='widget.format_currency(sale.payment_partial_amount)'/>
                     </div>
                     <div class='client-detail state'>
@@ -475,21 +481,25 @@
                             </button>
                         </div>
                     </t>
-                    <t>
-                        <div class='client-detail'>
-                            <span class='label'>Covert POS order</span>
-                            <button style="width: 120px; height:45px" type="button" rel="tooltip" class="btn btn-success action_covert_to_pos_order">
-                                <i class="fa fa-check"/>
-                            </button>
-                        </div>
+                    <t t-if="sale.state != 'done'">
+                        <t>
+                            <div class='client-detail'>
+                                <span class='label'>Covert POS order</span>
+                                <button style="width: 120px; height:45px" type="button" rel="tooltip" class="btn btn-success action_covert_to_pos_order">
+                                    <i class="fa fa-check"/>
+                                </button>
+                            </div>
+                        </t>
                     </t>
-                    <t t-if="sale.state == 'draft' or sale.state == 'sent'">
-                        <div class='client-detail'>
-                            <span class='label'>Confirm Sale</span>
-                            <button style="width: 120px; height:45px" type="button" rel="tooltip" class="btn btn-success action_confirm">
-                                <i class="fa fa-check"/>
-                            </button>
-                        </div>
+                    <t t-if="widget.pos.config.booking_allow_confirm_sale">
+                        <t t-if="sale.state == 'draft' or sale.state == 'sent'">
+                            <div class='client-detail'>
+                                <span class='label'>Confirm Sale</span>
+                                <button style="width: 120px; height:45px" type="button" rel="tooltip" class="btn btn-success action_confirm">
+                                    <i class="fa fa-check"/>
+                                </button>
+                            </div>
+                        </t>
                     </t>
                     <t t-if="sale.state == 'sale'">
                         <div class='client-detail'>

@@ -7,12 +7,23 @@
 odoo.define('pos_retail.database', function (require) {
     var db = require('point_of_sale.DB');
     var _super_db = db.prototype;
+    var rpc = require('pos.rpc');
+    var models = require('point_of_sale.models');
 
     // We replace method of core odoo because
     // 1. odoo core looping products for store to database parameter
     //    - And if big products (few millions products) will made browse crash
     //    - And we need cache faster than, store values for quickly search
     _super_db.add_products = function (products) {
+        var company_id;
+        if (self.posmodel && self.posmodel.user.company_id && self.posmodel.user.company_id[0]) {
+            company_id = self.posmodel.user.company_id[0]
+        }
+        if (company_id) {
+            products = _.filter(products, function (product) {
+                return !product.company_id || product.company_id[0] == company_id
+            })
+        }
         var stored_categories = this.product_by_category_id;
         if (!products instanceof Array) {
             products = [products];
@@ -20,23 +31,16 @@ odoo.define('pos_retail.database', function (require) {
         if (!self.posmodel) {
             self.posmodel = self.pos;
         }
-        if (self.posmodel.config.bus_id) {
-            var products_filter_by_bus_id = []
-            var bus_id = self.posmodel.config.bus_id[0];
-            self.posmodel.bus_id = bus_id;
-            for (var i = 0; i < products.length; i++) {
-                var product = products[i];
-                if (product.bus_ids && product.bus_ids.length != 0 && product.bus_ids.indexOf(bus_id) != -1) {
-                    products_filter_by_bus_id.push(product);
+        // TODO: only display product have category inside field iface_available_categ_ids of pos config
+        if (self.posmodel.config.limit_categories && self.posmodel.config.iface_available_categ_ids.length > 0) {
+            var products_allow_display = _.filter(products, function (product) {
+                if (!product.pos_categ_id[0]) {
+                    return true
+                } else {
+                    return self.posmodel.config.iface_available_categ_ids.indexOf(product.pos_categ_id[0]) != -1
                 }
-                if (product.bus_ids && product.bus_ids.length == 0) {
-                    products_filter_by_bus_id.push(product);
-                }
-                if (product.bus_ids == undefined) {
-                    products_filter_by_bus_id.push(product);
-                }
-            }
-            products = products_filter_by_bus_id;
+            });
+            products = products_allow_display;
         }
         for (var i = 0, len = products.length; i < len; i++) {
             var product = products[i];
@@ -162,6 +166,11 @@ odoo.define('pos_retail.database', function (require) {
         if (!self.posmodel) {
             self.posmodel = self.pos;
         }
+        if (self.posmodel.config.hide_supplier) {
+            partners = _.filter(partners, function (partner) {
+                return !partner.supplier;
+            })
+        }
         // ---------------------------------
         // core
         var updated_count = 0;
@@ -169,6 +178,9 @@ odoo.define('pos_retail.database', function (require) {
         var partner;
         for (var i = 0, len = partners.length; i < len; i++) {
             partner = partners[i];
+            if (partner['birthday_date']) {
+                partner['birthday_date'] = this._format_date(partner['birthday_date'])
+            }
             if (partner.deleted) {
                 delete this.partner_string_by_id[partner['id']];
                 delete this.partner_by_id[partner['id']];
@@ -231,48 +243,155 @@ odoo.define('pos_retail.database', function (require) {
         }
         return updated_count;
     };
-
+    _super_db._partner_search_string = function (partner) {
+        var str = partner.name;
+        if (partner.ref) {
+            str += '|' + partner.ref;
+        }
+        if (partner.barcode) {
+            str += '|' + partner.barcode;
+        }
+        if (partner.address) {
+            str += '|' + partner.address;
+        }
+        if (partner.phone) {
+            str += '|' + partner.phone.split(' ').join('');
+        }
+        if (partner.mobile) {
+            str += '|' + partner.mobile.split(' ').join('');
+        }
+        if (partner.email) {
+            str += '|' + partner.email;
+        }
+        str = '' + partner.id + ':' + str.replace(':', '') + '\n';
+        return str;
+    };
     db.include({
         init: function (options) {
             this._super(options);
             this.product_by_supplier_barcode = {};
             this.sequence = 1;
-            // pos orders
+            // TODO: stored pos orders
             this.order_by_id = {};
             this.order_by_ean13 = {};
             this.order_search_string = "";
             this.order_search_string_by_id = {};
             this.lines_by_order_id = {};
             this.order_line_by_id = {};
-            // account invoices
+            // TODO: stored account invoices
             this.invoice_by_id = {};
             this.invoice_by_partner_id = {};
             this.invoice_search_string = "";
             this.invoice_search_string_by_id = {};
             this.invoice_line_by_id = {};
             this.lines_invoice_by_id = {};
-            // auto complete search
+            // TODO: auto complete search
             this.pos_order_string_by_id = {};
             this.invoice_string_by_id = {};
             this.sale_order_string_by_id = {};
             this.partner_string_by_id = {};
             this.product_string_by_id = {};
-            // sale orders
+            // TODO: stored sale orders
             this.sale_order_by_id = {};
             this.sale_order_by_name = {};
             this.sale_search_string = '';
             this.sale_search_string_by_id = {};
             this.sale_line_by_id = {};
             this.lines_sale_by_id = {};
-            // medical
+            // TODO: stored medical
             this.insurances = [];
             this.insurances_autocomplete = [];
             this.insurance_by_id = {};
             this.insurance_by_partner_id = {};
-            // stock datas
+            // TODO: stored stock datas
             this.stock_datas = {};
             // products
             this.product_id_by_name = {};
+            // TODO: last updated date by model
+            this.write_date_by_model = {};
+        },
+        set_last_write_date_by_model: function (model, results) {
+            /* TODO:
+                We need to know last records updated (change by backend clients)
+                And use field write_date compare datas of pos and datas of backend
+                We are get best of write date and compare
+             */
+            for (var i = 0; i < results.length; i++) {
+                var line = results[i];
+                if (!this.write_date_by_model[model]) {
+                    this.write_date_by_model[model] = line.write_date;
+                    continue;
+                }
+                if (this.write_date_by_model[model] != line.write_date && new Date(this.write_date_by_model[model]).getTime() < new Date(line.write_date).getTime()) {
+                    this.write_date_by_model[model] = line.write_date;
+                }
+            }
+            //console.log('LAST UPDATED DATE OF model: ' + model + ' is ' + this.write_date_by_model[model]);
+        },
+        filter_datas_notifications_with_current_date: function (model, datas) {
+            var self = this;
+            var new_datas = _.filter(datas, function (data) {
+                return new Date(self.write_date_by_model[data['model']]).getTime() <= new Date(data['write_date']).getTime() + 1000;
+            });
+            return new_datas;
+        },
+        set_uuid: function (uuid) {
+            /*
+                TODO:
+                    if current sessions have order unpaid, and products data have not exist.
+                    we need call product model get products the first
+             */
+            this._super(uuid);
+            var unpaid_orders = this.load('unpaid_orders', []);
+            var product_ids = [];
+            var product_model = _.find(self.posmodel.model_lock, function (model) {
+                return model.fields != undefined && model.model == 'product.product';
+            });
+            if (unpaid_orders) {
+                for (var i = 0; i < unpaid_orders.length; i++) {
+                    var unpaid_order = unpaid_orders[i]['data'];
+                    for (var j = 0; j < unpaid_order.lines.length; j++) {
+                        var unpaid_line = unpaid_order.lines[j][2];
+                        if (unpaid_line.product_id) {
+                            product_ids.push(unpaid_line.product_id);
+                        }
+                    }
+                }
+            }
+            if (product_ids.length && product_model.fields) {
+                rpc.query({
+                    model: 'product.product',
+                    method: 'search_read',
+                    domain: [['id', 'in', product_ids]],
+                    fields: product_model.fields
+                }).then(function (products) {
+                    if (self.posmodel.server_version != 10) {
+                        var using_company_currency = self.posmodel.config.currency_id[0] === self.posmodel.company.currency_id[0];
+                        var conversion_rate;
+                        if (self.posmodel.currency && self.posmodel.currency.rate && self.posmodel.company_currency && self.posmodel.company_currency.rate) {
+                            conversion_rate = self.posmodel.currency.rate / self.posmodel.company_currency.rate;
+                        } else {
+                            conversion_rate = 1
+                        }
+                        self.posmodel.db.add_products(_.map(products, function (product) {
+                            if (!using_company_currency) {
+                                product.lst_price = round_pr(product.lst_price * conversion_rate, self.pos.currency.rounding);
+                            }
+                            product.categ = _.findWhere(self.posmodel.product_categories, {'id': product.categ_id[0]});
+                            return new models.Product({}, product);
+                        }));
+                    }
+                })
+            }
+        },
+        _format_date: function (old_date) {
+            var parts = old_date.split('-');
+            if (parts[0].length == 4) {
+                var new_date = old_date.toString().split("-").reverse().join("-");
+            } else {
+                var new_date = old_date.toString().split("-").join("-");
+            }
+            return new_date;
         },
         get_product_by_id: function (id) {
             var product = this.product_by_id[id];
@@ -308,14 +427,20 @@ odoo.define('pos_retail.database', function (require) {
         },
         get_partner_string: function (partner) {
             var label = partner['name'];
+            if (partner['ref']) {
+                label += ' ' + partner['ref']
+            }
+            if (partner['barcode']) {
+                label += ' ' + partner['barcode']
+            }
             if (partner['email']) {
-                label += ' | ' + partner['email']
+                label += ' ' + partner['email']
             }
             if (partner['phone']) {
-                label += ' | ' + partner['phone']
+                label += '  ' + partner['phone']
             }
-            if (partner['mobile']) {
-                label += ' | ' + partner['mobile']
+            if (partner['mobile'] && (partner['mobile'] != partner['phone'])) {
+                label += ' ' + partner['mobile']
             }
             return label
         },
@@ -393,8 +518,11 @@ odoo.define('pos_retail.database', function (require) {
             if (order.create_date) {
                 str += '|' + order['create_date'];
             }
+            if (order.pos_reference) {
+                str += '|' + order['pos_reference'];
+            }
             if (order.partner_id) {
-                var partner = this.partner_by_id[order.partner_id[0]]
+                var partner = this.partner_by_id[order.partner_id[0]];
                 if (partner) {
                     if (partner['name']) {
                         str += '|' + partner['name'];
@@ -412,6 +540,9 @@ odoo.define('pos_retail.database', function (require) {
             }
             if (order.date_order) {
                 str += '|' + order['date_order'];
+            }
+            if (order.user_id) {
+                str += '|' + order['user_id'][1];
             }
             str = '' + order['id'] + ':' + str.replace(':', '') + '\n';
             return str;
@@ -487,6 +618,15 @@ odoo.define('pos_retail.database', function (require) {
             return label
         },
         save_pos_orders: function (orders) { // stores pos orders
+            this.set_last_write_date_by_model('pos.order', orders);
+            var branch_id = self.posmodel.config.pos_branch_id;
+            var pos_orders_filter_by_branch = self.posmodel.config.pos_orders_filter_by_branch;
+            if (branch_id && pos_orders_filter_by_branch) {
+                var branch_id = branch_id[0];
+                orders = _.filter(orders, function (order) {
+                    return order.pos_branch_id && order.pos_branch_id[0] == branch_id
+                })
+            }
             for (var i = 0; i < orders.length; i++) {
                 var order = orders[i];
                 if (order.deleted) {
@@ -513,6 +653,11 @@ odoo.define('pos_retail.database', function (require) {
                         order.partner_name = partner.name;
                     }
                 }
+                if (order.user_id) {
+                    order['sale_person'] = order.user_id[1];
+                } else {
+                    order['sale_person'] = 'N/A';
+                }
                 this.order_by_id[order['id']] = order;
                 this.order_by_ean13[order.ean13] = order;
                 this.order_search_string_by_id[order.id] = this._order_search_string(order);
@@ -524,8 +669,12 @@ odoo.define('pos_retail.database', function (require) {
             }
         },
         save_pos_order_line: function (lines) {
+            this.set_last_write_date_by_model('pos.order.line', lines);
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
+                if (!line.order_id) {
+                    continue
+                }
                 this.order_line_by_id[line['id']] = line;
                 var lines_by_order_id = this.lines_by_order_id[line.order_id[0]];
                 if (lines_by_order_id) {
@@ -551,7 +700,7 @@ odoo.define('pos_retail.database', function (require) {
                 str += '|' + invoice.create_date;
             }
             if (invoice.partner_id) {
-                var partner = this.partner_by_id[invoice.partner_id[0]]
+                var partner = this.partner_by_id[invoice.partner_id[0]];
                 if (partner) {
                     if (partner['name']) {
                         str += '|' + partner['name'];
@@ -646,6 +795,7 @@ odoo.define('pos_retail.database', function (require) {
             return label
         },
         save_invoices: function (invoices) {
+            this.set_last_write_date_by_model('account.invoice', invoices);
             for (var i = 0; i < invoices.length; i++) {
                 var invoice = invoices[i];
                 if (invoice.deleted) {
@@ -679,8 +829,12 @@ odoo.define('pos_retail.database', function (require) {
             }
         },
         save_invoice_lines: function (lines) {
+            this.set_last_write_date_by_model('account.invoice.line', lines);
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
+                if (!line.invoice_id) {
+                    continue
+                }
                 this.invoice_line_by_id[line['id']] = line;
                 var lines_invoice_by_id = this.lines_invoice_by_id[line.invoice_id[0]];
                 if (lines_invoice_by_id) {
@@ -727,6 +881,9 @@ odoo.define('pos_retail.database', function (require) {
             }
             if (sale.origin) {
                 str += '|' + sale.origin;
+            }
+            if (sale.user_id) {
+                str += '|' + sale.user_id[1];
             }
             str = '' + sale['id'] + ':' + str.replace(':', '') + '\n';
             return str;
@@ -778,6 +935,7 @@ odoo.define('pos_retail.database', function (require) {
             return source;
         },
         save_sale_orders: function (sale_orders) {
+            this.set_last_write_date_by_model('sale.order', sale_orders);
             for (var i = 0; i < sale_orders.length; i++) {
                 var sale = sale_orders[i];
                 if (sale.deleted) {
@@ -807,6 +965,11 @@ odoo.define('pos_retail.database', function (require) {
                         }
                     }
                     sale['partner_name'] = sale.partner_id[1];
+                    if (sale['user_id']) {
+                        sale['sale_person'] = sale['user_id'][1]
+                    } else {
+                        sale['sale_person'] = 'N/A';
+                    }
                 }
                 this.sale_order_string_by_id[sale['id']] = label;
                 this.sale_order_by_id[sale['id']] = sale;
@@ -819,21 +982,12 @@ odoo.define('pos_retail.database', function (require) {
             }
         },
         save_sale_order_lines: function (lines) {
+            this.set_last_write_date_by_model('sale.order.line', lines);
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
-                if (!line.deleted) {
-                    this.sale_line_by_id[line['id']] = line;
-                    var sale = this.sale_order_by_id[line['order_id'][0]];
-                    if (sale) {
-                        sale['lines'].push(line)
-                    }
+                if (!line.order_id) {
+                    continue
                 }
-
-            }
-        },
-        save_sale_order_lines: function (lines) {
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
                 this.sale_line_by_id[line['id']] = line;
                 var lines_sale_by_id = this.lines_sale_by_id[line.order_id[0]];
                 if (lines_sale_by_id) {

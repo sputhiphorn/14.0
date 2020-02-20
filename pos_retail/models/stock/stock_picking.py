@@ -8,7 +8,7 @@ _logger = logging.getLogger(__name__)
 class stock_picking(models.Model):
     _inherit = "stock.picking"
 
-    pos_order_id = fields.Many2one('pos.order', 'POS order')
+    pos_order_id = fields.Many2one('pos.order', 'POS order') # TODO: only for picking combo
 
     @api.model
     def create(self, vals):

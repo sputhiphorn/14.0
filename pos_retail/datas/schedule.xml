@@ -7,19 +7,30 @@
             <field name="name">POS auto refresh call log</field>
             <field name="model_id" ref="pos_retail.model_pos_call_log"/>
             <field name="state">code</field>
-            <field name="code">model.refresh_call_logs()</field>
-            <field name="interval_number">2</field>
-            <field name="interval_type">hours</field>
+            <field name="code">model.refresh_logs()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
             <field name="numbercall">-1</field>
             <field name="doall" eval="False"/>
         </record>
 
-        <record id="schedule_cron_job_auto_create_picking_delayed" model="ir.cron">
-            <field name="name">POS auto process picking delayed</field>
-            <field name="model_id" ref="point_of_sale.model_pos_order"/>
+        <record id="schedule_auto_expired_points" model="ir.cron">
+            <field name="name">POS auto expired points</field>
+            <field name="model_id" ref="pos_retail.model_pos_loyalty_point"/>
             <field name="state">code</field>
-            <field name="code">model.cron_job_auto_create_picking_delayed()</field>
-            <field name="interval_number">10</field>
+            <field name="code">model.cron_expired_points()</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+        </record>
+
+        <record id="schedule_cron_auto_process_orders_no_wait" model="ir.cron">
+            <field name="name">POS auto process Orders no Wait</field>
+            <field name="model_id" ref="pos_retail.model_pos_order"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_auto_process_orders_no_wait()</field>
+            <field name="interval_number">15</field>
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field name="doall" eval="False"/>

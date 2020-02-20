@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models, tools, _
+from odoo import api, fields, models, tools, _, registry
 from odoo.exceptions import UserError
 from odoo import SUPERUSER_ID
-import json
-
+import odoo
 import logging
+
 _logger = logging.getLogger(__name__)
+
 
 class pos_session(models.Model):
     _inherit = "pos.session"
+
+    closed_at = fields.Datetime(string='Closed Date', readonly=True, copy=False)
 
     def _confirm_orders(self):
         # We're have not solution how to break out order with status partial_payment
@@ -140,6 +143,10 @@ class AccountBankStmtCashWizard(models.Model):
     description = fields.Char("Description")
 
     @api.multi
+    def remove_cashbox_line(self, cashbox_line_id):
+        return self.env['account.cashbox.line'].browse(cashbox_line_id).unlink()
+
+    @api.multi
     def validate_from_ui(self, session_id, balance, values):
         """ Create , Edit , Delete of Closing Balance Grid
 
@@ -166,29 +173,31 @@ class AccountBankStmtCashWizard(models.Model):
             cashbox_line = self.env['account.cashbox.line']
             if id and number and coin_value:  # Add new Row
                 cashbox_line = cashbox_line.browse(id)
-                cashbox_line.write({'number': number,
-                                    'coin_value': coin_value
-                                    })
+                cashbox_line.write({
+                    'number': number,
+                    'coin_value': coin_value
+                })
             elif not id and number and coin_value:  # Add new Row
-                cashbox_line.create({'number': number,
-                                     'coin_value': coin_value,
-                                     'cashbox_id': self.id
-                                     })
-            elif id and not (number and coin_value):  # Delete Exist Row
-                cashbox_line = cashbox_line.browse(id)
-                cashbox_line.unlink()
-
+                cashbox_line.create(
+                    {'number': number,
+                     'coin_value': coin_value,
+                     'cashbox_id': self.id
+                     })
         total = 0.0
         for lines in self.cashbox_lines_ids:
             total += lines.subtotal
         if (balance == 'start'):
             # starting balance
-            bnk_stmt.write({'balance_start': total,
-                            'cashbox_start_id': self.id})
+            bnk_stmt.write({
+                'balance_start': total,
+                'cashbox_start_id': self.id
+            })
         else:
             # closing balance
-            bnk_stmt.write({'balance_end_real': total,
-                            'cashbox_end_id': self.id})
+            bnk_stmt.write({
+                'balance_end_real': total,
+                'cashbox_end_id': self.id
+            })
         if (balance == 'end'):
             if bnk_stmt.difference < 0:
                 if self.env.user.id == SUPERUSER_ID:

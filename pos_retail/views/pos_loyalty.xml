@@ -70,7 +70,8 @@
                 <form string="Loyalties">
                     <header>
                         <field name="state" widget="statusbar" clickable="true"/>
-                        <button name="active_all_pos" string="Active all pos" type="object" groups="point_of_sale.group_pos_manager" class="btn-primary"/>
+                        <button name="active_all_pos" string="Active all pos" type="object"
+                                groups="point_of_sale.group_pos_manager" class="btn-primary"/>
                     </header>
                     <sheet>
                         <h1>
@@ -80,7 +81,9 @@
                         </h1>
                         <group>
                             <field name="product_loyalty_id"/>
-                            <field name="rounding"/>
+                            <field name="period_expired"/>
+                            <field name="rounding_down"/>
+                            <field name="rounding" attrs="{'invisible': [('rounding_down', '=', True)]}"/>
                         </group>
                         <group string="Rules">
                             <field name="rule_ids" nolabel="1">
@@ -162,6 +165,9 @@
                                     </sheet>
                                 </form>
                             </field>
+                        </group>
+                        <group string="POS applied">
+                            <field name="config_ids" nolabel="1" readonly="1"/>
                         </group>
                     </sheet>
                 </form>
@@ -385,6 +391,89 @@
                 </xpath>
             </field>
         </record>
+
+        <record id="pos_loyalty_point_tree" model="ir.ui.view">
+            <field name="name">pos.loyalty.point.tree</field>
+            <field name="model">pos.loyalty.point</field>
+            <field name="priority">20</field>
+            <field name="arch" type="xml">
+                <tree string="Loyalty Points">
+                    <field name="loyalty_id"/>
+                    <field name="order_id"/>
+                    <field name="type"/>
+                    <field name="partner_id"/>
+                    <field name="end_date"/>
+                    <field name="point"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="pos_loyalty_point_form" model="ir.ui.view">
+            <field name="name">pos.loyalty.point.form</field>
+            <field name="model">pos.loyalty.point</field>
+            <field name="arch" type="xml">
+                <form string="Loyalty Point">
+                    <header>
+                        <field name="state" widget="statusbar" clickable="true"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="loyalty_id" class="oe_edit_only"/>
+                            <h1>
+                                <field name="loyalty_id" class="oe_inline"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="order_id"/>
+                                <field name="type"/>
+                            </group>
+                            <group>
+                                <field name="end_date"/>
+                                <field name="point"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="pos_loyalty_point_search" model="ir.ui.view">
+            <field name="name">pos.loyalty.point.filter</field>
+            <field name="model">pos.loyalty.point</field>
+            <field name="arch" type="xml">
+                <search string="Loyalty Points Filter">
+                    <field name="loyalty_id"/>
+                    <field name="order_id"/>
+                    <field name="type"/>
+                    <field name="partner_id"/>
+                    <field name="end_date"/>
+                    <field name="point"/>
+                    <field name="state"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Customer" name="groupby_partner" domain="[]" context="{'group_by': 'partner_id'}"/>
+                        <filter string="Type" name="groupby_type" domain="[]" context="{'group_by': 'type'}"/>
+                        <filter string="State" name="groupby_state" domain="[]" context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="action_pos_loyalty_point">
+            <field name="name">Loyalty Points</field>
+            <field name="res_model">pos.loyalty.point</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="menu_action_pos_loyalty_point"
+                  action="action_pos_loyalty_point"
+                  parent="menu_loyalty"
+                  sequence="6"
+                  groups="point_of_sale.group_pos_manager"
+        />
 
     </data>
 </odoo>

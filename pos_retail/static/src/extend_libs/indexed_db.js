@@ -19,16 +19,13 @@ odoo.define('pos_retail.indexedDB', function (require) {
                 try {
                     var os_product = db.createObjectStore('product.product', {keyPath: "id"});
                     os_product.createIndex('bc_index', 'barcode', {unique: false})
-                    os_product.createIndex('dc_index', 'default_code', {unique: false})
-                    os_product.createIndex('name_index', 'name', {unique: false})
-                    db.createObjectStore('res.partner', {keyPath: "id"});
-                    db.createObjectStore('account.invoice', {keyPath: "id"});
-                    db.createObjectStore('account.invoice.line', {keyPath: "id"});
-                    db.createObjectStore('pos.category', {keyPath: "id"});
-                    db.createObjectStore('pos.order', {keyPath: "id"});
-                    db.createObjectStore('pos.order.line', {keyPath: "id"});
-                    db.createObjectStore('sale.order', {keyPath: "id"});
-                    db.createObjectStore('sale.order.line', {keyPath: "id"});
+                    os_product.createIndex('dc_index', 'default_code', {unique: false});
+                    os_product.createIndex('name_index', 'name', {unique: false});
+                    var os_partner = db.createObjectStore('res.partner', {keyPath: "id"});
+                    os_partner.createIndex('name_index', 'name', {unique: false});
+                    os_partner.createIndex('mobile_index', 'mobile', {unique: false});
+                    os_partner.createIndex('phone_index', 'phone', {unique: false});
+                    os_partner.createIndex('barcode_index', 'barcode', {unique: false});
                 } catch (e) {
                     console.error(e);
                 }
@@ -58,6 +55,7 @@ odoo.define('pos_retail.indexedDB', function (require) {
             return status.promise();
         },
         write: function (table_name, items) {
+            console.log('updating table ' + table_name + ' with total rows ' + items.length);
             var max_id = items[items.length - 1]['id'];
             var sequence = Math.floor(max_id / 100000);
             var request = indexedDB.open(this.pos.session.db + '_' + sequence, 1);
@@ -200,144 +198,8 @@ odoo.define('pos_retail.indexedDB', function (require) {
 
             load_data(0);
             return done.promise();
-        },
-        get_invoices: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var done = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    done.resolve();
-                } else {
-                    $.when(self.search_read('account.invoice', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('account.invoice', results);
-                        }
-                    });
-                    sequence += 1;
-                    load_data(sequence);
-                }
-            }
-
-            load_data(0);
-            return done.promise();
-        },
-        get_invoice_lines: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var done = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    done.resolve();
-                } else {
-                    $.when(self.search_read('account.invoice.line', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('account.invoice.line', results);
-                        }
-                    }).done(function () {
-                        sequence += 1;
-                        load_data(sequence);
-                    });
-                }
-            }
-
-            load_data(0);
-            return done.promise();
-        },
-        get_pos_orders: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var status = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    status.resolve();
-                } else {
-                    $.when(self.search_read('pos.order', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('pos.order', results);
-                        }
-                    }).done(function () {
-                        sequence += 1;
-                        load_data(sequence);
-                    });
-                }
-            }
-
-            load_data(0);
-            return status;
-        },
-        get_pos_order_lines: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var done = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    done.resolve();
-                } else {
-                    $.when(self.search_read('pos.order.line', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('pos.order.line', results);
-                        }
-                    }).done(function () {
-                        sequence += 1;
-                        load_data(sequence);
-                    });
-                }
-            }
-
-            load_data(0);
-            return done.promise();
-        },
-        get_sale_orders: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var done = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    done.resolve();
-                } else {
-                    $.when(self.search_read('sale.order', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('sale.order', results);
-                        }
-                    }).done(function () {
-                        sequence += 1;
-                        load_data(sequence);
-                    });
-                }
-            }
-
-            load_data(0);
-            return done.promise();
-        },
-        get_sale_order_lines: function (pos, max_sequence) {
-            this.pos = pos;
-            var self = this;
-            var done = new $.Deferred();
-
-            function load_data(sequence) {
-                if (sequence > max_sequence) {
-                    done.resolve();
-                } else {
-                    $.when(self.search_read('sale.order.line', sequence)).then(function (results) {
-                        if (results.length > 0) {
-                            self.pos.save_results('sale.order.line', results);
-                        }
-                    }).done(function () {
-                        sequence += 1;
-                        load_data(sequence);
-                    });
-                }
-            }
-
-            load_data(0);
-            return done.promise();
         }
     };
+
     return multi_database;
 });

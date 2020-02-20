@@ -40,9 +40,12 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                     event.preventDefault();
                     self.keyboard_handler(event);
                 }
+                if (event.keyCode === 27) { // key: esc
+                    event.preventDefault();
+                    self.keyboard_handler(event);
+                }
             };
             this.keyboard_handler = function (event) {
-                var order = self.pos.get_order();
                 var current_screen = self.pos.gui.get_current_screen();
                 if (current_screen != 'products' || self.gui.has_popup()) {
                     self.remove_event_keyboard();
@@ -51,7 +54,6 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                 var key = '';
                 if (event.type === "keypress") {
                     if (event.keyCode === 32) { // Space
-                        self.remove_event_keyboard();
                         $('.pay').click();
                     } else if (event.keyCode === 190 || // Dot
                         event.keyCode === 188 ||  // Comma
@@ -63,44 +65,63 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                         key = '-';
                     } else if (event.keyCode === 43) { // Plus
                         key = '+';
-                    } else if (event.keyCode === 99 && self.pos.config.allow_customer) {
-                        self.remove_event_keyboard();
-                        $('.set-customer').click()
-                    } else if (event.keyCode === 113 && self.pos.config.allow_qty) {
-                        self.numpad_state.changeMode('quantity'); // q
-                        self.pos.trigger('change:mode');
-                    } else if (event.keyCode === 112 && self.pos.config.allow_price) {
-                        self.numpad_state.changeMode('price');    // p
-                        self.pos.trigger('change:mode');
-                    } else if (event.keyCode === 100 && self.pos.config.allow_discount) {
-                        self.numpad_state.changeMode('discount'); // d
-                        self.pos.trigger('change:mode');
-                    } else if (event.keyCode === 103) {
-                        self.remove_event_keyboard();
-                        $('.add_pos_category').click();
-                    } else if (event.keyCode === 110 && self.pos.config.allow_add_order) {
-                        self.remove_event_keyboard();
-                        self.pos.add_new_order();
-                    } else if (event.keyCode === 114 && self.pos.config.allow_remove_order) { // key: r
-                        self.remove_event_keyboard();
-                        $('.deleteorder-button').click();
                     } else if (event.keyCode === 97 && self.pos.config.add_client) {  // key: a
-                        self.remove_event_keyboard();
-                        $('.add_customer').click();
-                    } else if (event.keyCode === 119 && self.pos.config.product_operation) { // key: w
-                        self.remove_event_keyboard();
-                        $('.add_product').click();
-                    } else if (event.keyCode === 102 && self.pos.config.quickly_payment) { // key: f
-                        self.remove_event_keyboard();
-                        $('.quickly_payment').click();
+                        $('.add-new-customer').click();
+                    } else if (event.keyCode === 98) {  // key: b
+                        $('.show_hide_buttons').click()
+                    } else if (event.keyCode === 99 && self.pos.config.allow_customer) { // key: c
+                        $('.set-customer').click()
+                    } else if (event.keyCode === 100 && self.pos.config.allow_discount) { // key: d
+                        self.numpad_state.changeMode('discount');
+                        self.pos.trigger('change:mode');
+                    } else if (event.keyCode === 101) { // key: w
+                        self.pos.gui.show_popup('popup_create_product', {
+                            title: 'Add New Product',
+                        })
+                    } else if (event.keyCode === 104) { // key: h
+                        $('.show_hide_pad').click();
+                    } else if (event.keyCode === 102 && self.pos.config.quickly_payment_full && self.pos.config.quickly_payment_full_journal_id) { // key: f
+                        $('.quickly_paid').click();
+                    } else if (event.keyCode === 103) {
+
+                    } else if (event.keyCode === 105 && self.pos.config.management_invoice) { // key: i
+                        self.pos.gui.show_screen('invoices');
+                    } else if (event.keyCode === 107) { // key: k
+                        $('.find_partner_input').focus();
+                    } else if (event.keyCode === 108) { // key: l
+                        if (self.gui.chrome.widget['lock_session_widget']) {
+                            self.gui.chrome.widget['lock_session_widget'].el.click();
+                        }
+                    } else if (event.keyCode === 110 && self.pos.config.allow_add_order) { // key: n
+                        self.pos.add_new_order();
+                    } else if (event.keyCode === 111 && self.pos.config.pos_orders_management) { // key: o
+                        self.pos.gui.show_screen('pos_orders_screen');
+                    } else if (event.keyCode === 112 && self.pos.config.allow_price) { // key: p
+                        self.numpad_state.changeMode('price');
+                        self.pos.trigger('change:mode');
+                    } else if (event.keyCode === 113 && self.pos.config.allow_qty) { // key q
+                        self.numpad_state.changeMode('quantity');
+                        self.pos.trigger('change:mode');
+                    } else if (event.keyCode === 114 && self.pos.config.allow_remove_order) { // key: r
+                        $('.deleteorder-button').click();
+                    } else if (event.keyCode === 115) { // key:  s
+                        $('.search-products').focus();
+                    } else if (event.keyCode === 118) { // key:  v
+                        self.gui.chrome.widget['products_view_widget'].el.click();
+                    } else if (event.keyCode === 119) { // key:  w
+                        self.pos.gui.show_popup('popup_create_pos_category', {
+                            title: 'Add New Product Category'
+                        })
                     }
                 } else {
-                    if (event.keyCode === 46) { // Delete
-                        key = 'CLEAR';
+                    if (event.keyCode === 46) { // key: del
+                        key = 'REMOVE';
                     } else if (event.keyCode === 8) { // Backspace
                         key = 'BACKSPACE';
                     } else if (event.keyCode === 187) { // Backspace
                         key = '+';
+                    } else if (event.keyCode === 27) { // Key: ESC
+                        key = 'ESC';
                     }
                 }
                 self.press_keyboard(key);
@@ -128,6 +149,19 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                     }
                 }
             }
+            if (input == "REMOVE") {
+                var order = this.pos.get_order();
+                if (order.get_selected_orderline()) {
+                    this.set_value('remove');
+                }
+            }
+            if (input == "ESC") { // Clear Search
+                var input = $('input'); // find all input elements and clear
+                input.val("");
+                var products_screen = this.gui.screen_instances['products'];
+                var product_categories_widget = products_screen.product_categories_widget;
+                product_categories_widget.clear_search();
+            }
             if (this.gui.has_popup()) {
                 return;
             }
@@ -136,7 +170,11 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                 this.firstinput = (newbuf.length === 0);
                 if (newbuf !== this.inputbuffer) {
                     this.inputbuffer = newbuf;
-                    var amount = field_utils.parse.float(this.inputbuffer);
+                    if (this.pos.server_version == 10) {
+                        var amount = formats.parse_value(this.inputbuffer, {type: "float"}, 0.0);
+                    } else {
+                        var amount = field_utils.parse.float(this.inputbuffer);
+                    }
                     this.set_value(amount);
                 }
             }
@@ -213,7 +251,7 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                 }
                 if (this.pos.server_version != 10) {
                     $('body').keypress(this.keyboard_handler);
-                    $('body').keydown(this.keyboard_keydown_handler);
+                    // $('body').keydown(this.keyboard_keydown_handler);
                 }
                 window.document.body.addEventListener('keypress', this.keyboard_handler);
                 window.document.body.addEventListener('keydown', this.keyboard_keydown_handler);
@@ -222,19 +260,42 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
         remove_event_keyboard: function () {
             if (this.pos.server_version == 10) {
                 $('.leftpane').off('keypress', this.keyboard_handler);
-                $('.leftpane').off('keydown', this.keyboard_keydown_handler);
+                // $('.leftpane').off('keydown', this.keyboard_keydown_handler);
             }
             if (this.pos.server_version != 10) {
                 $('body').off('keypress', this.keyboard_handler);
-                $('body').off('keydown', this.keyboard_keydown_handler);
+                // $('body').off('keydown', this.keyboard_keydown_handler);
             }
             window.document.body.removeEventListener('keypress', this.keyboard_handler);
             window.document.body.removeEventListener('keydown', this.keyboard_keydown_handler);
         },
         renderElement: function (scrollbottom) {
-            var self = this;
             this._super(scrollbottom);
             this.add_event_keyboard();
+        },
+        event_input_linked_keyboard_event: function () {
+            // TODO: test cases
+            //          -----------------------------------------------------------------
+            //          1. click choice item
+            //          2. click out search box
+            //          3. click choice item out of box
+            //          4. no choice anything, click another element
+            //          -----------------------------------------------------------------
+            var self = this;
+            this.getParent().el.querySelector('.search-products').addEventListener('focus', function () {
+                self.remove_event_keyboard();
+            });
+            this.getParent().el.querySelector('.search-products').addEventListener('blur', function () {
+                self.remove_event_keyboard();
+                self.add_event_keyboard();
+            });
+            this.getParent().el.querySelector('.find_partner_input').addEventListener('focus', function () {
+                self.remove_event_keyboard();
+            });
+            this.getParent().el.querySelector('.find_partner_input').addEventListener('blur', function () {
+                self.remove_event_keyboard();
+                self.add_event_keyboard();
+            });
         },
         orderline_change: function (line) {
             this._super(line);
@@ -252,7 +313,7 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
             $qty.addClass('oe_hidden');
             if (order) {
                 var product_ids = [];
-                for (var i=0; i < order.orderlines.models.length; i++) {
+                for (var i = 0; i < order.orderlines.models.length; i++) {
                     product_ids.push(order.orderlines.models[i].product.id)
                 }
                 this.pos._update_cart_qty_by_order(product_ids);
@@ -316,50 +377,15 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                 }.bind(this)));
             }
             // -----------------------------
-            // Multi lots
-            // line multi lots
+            // Edit voucher vard
             // -----------------------------
-            var el_multi_lots = el_node.querySelector('.multi_lots');
-            if (el_multi_lots) {
-                el_multi_lots.addEventListener('click', (function () {
+            var el_edit_voucher_card = el_node.querySelector('.edit_voucher_card');
+            if (el_edit_voucher_card) {
+                el_edit_voucher_card.addEventListener('click', (function () {
                     var order = self.pos.get_order();
-                    var selected_orderline = order.selected_orderline;
-                    if (selected_orderline) {
-                        if (!selected_orderline.lot_ids) {
-                            selected_orderline.lot_ids = [];
-                        }
-                        self.pos.gui.show_popup('popup_set_multi_lots', {
-                            'title': 'Add lots',
-                            'selected_orderline': selected_orderline,
-                            confirm: function (lot_ids) {
-                                var order = self.pos.get_order();
-                                var selected_orderline = order.selected_orderline;
-                                var sum = 0;
-                                for (var i = 0; i < lot_ids.length; i++) {
-                                    var lot_added = lot_ids[i];
-                                    var lot_check = self.pos.lot_by_name[lot_added['name']];
-                                    if (!lot_check) {
-                                        return self.pos.gui.show_popup('dialog', {
-                                            'title': 'Warning',
-                                            'body': 'Please checking again lot name: ' + lot_added['name'] + ' , because this lot have not exist'
-                                        })
-                                    } else {
-                                        sum += parseFloat(lot_added['quantity']);
-                                    }
-                                }
-                                if (sum > selected_orderline['quantity'] || sum < selected_orderline['quantity']) {
-                                    return self.pos.gui.show_popup('dialog', {
-                                        'title': 'Warning',
-                                        'body': 'Total quantities of lots added have not the same quantities of line selected'
-                                    })
-                                }
-                                selected_orderline.lot_ids = lot_ids;
-                                selected_orderline.trigger('change', selected_orderline);
-                                selected_orderline.trigger('trigger_update_line');
-                            }
-                        })
+                    if (order) {
+                        order.show_popup_create_voucher();
                     }
-
                 }.bind(this)));
             }
             // -----------------------------
@@ -371,7 +397,7 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                     var order = self.pos.get_order();
                     var selected_orderline = order.selected_orderline;
                     if (self.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id]) {
-                        return self.gui.show_popup('pop_up_select_variants', {
+                        return self.gui.show_popup('popup_select_variants', {
                             variants: self.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id],
                             selected_orderline: selected_orderline,
                         });
@@ -389,29 +415,22 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
             var el_add_sale_person = el_node.querySelector('.add_sale_person');
             if (el_add_sale_person) {
                 el_add_sale_person.addEventListener('click', (function () {
-                    var sellers = self.pos.sellers;
-                    var list = [];
-                    for (var i = 0; i < sellers.length; i++) {
-                        var seller = sellers[i];
-                        list.push({
-                            'label': seller['name'],
-                            'item': seller
-                        })
-                    }
-                    if (list.length > 0) {
-                        return self.pos.gui.show_popup('selection', {
-                            title: _t('Select sale person'),
-                            list: list,
-                            confirm: function (seller) {
-                                orderline.set_sale_person(seller);
+                    var sellers = this.pos.sellers;
+                    return this.pos.gui.show_popup('popup_selection_extend', {
+                        title: 'Select Sale Person',
+                        fields: ['name', 'email', 'id'],
+                        sub_datas: sellers,
+                        sub_template: 'sale_persons',
+                        body: 'Please select one sale person',
+                        confirm: function (user_id) {
+                            var seller = self.pos.user_by_id[user_id];
+                            var order = self.pos.get_order();
+                            if (order) {
+                                var selected_line = order.get_selected_orderline();
+                                selected_line.set_sale_person(seller);
                             }
-                        });
-                    } else {
-                        return this.pos.gui.show_popup('dialog', {
-                            title: 'Warning',
-                            body: 'Your pos config have not add sellers'
-                        });
-                    }
+                        }
+                    })
 
                 }.bind(this)));
             }
@@ -644,37 +663,59 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
             if (!line_selected) {
                 return false;
             }
-            /*
-            Security limit discount filter by cashiers
-             */
-            if (mode == 'discount' && this.pos.config.discount_limit && line_selected) {
+            if (mode == 'discount' && this.pos.config.discount_limit && line_selected) { // TODO: Security limit discount filter by cashiers
                 this.gui.show_popup('number', {
                     'title': _t('Which percentage of discount would you apply ?'),
                     'value': self.pos.config.discount_limit_amount,
                     'confirm': function (discount) {
                         if (discount > self.pos.config.discount_limit_amount) {
-                            if (self.pos.config.discount_unlock_limit) {
-                                var manager_user_id = self.pos.config.discount_unlock_limit_user_id[0];
-                                var manager_user = self.pos.user_by_id[manager_user_id];
-                                if (!manager_user) {
-                                    return;
-                                }
-                                return this.pos.gui.show_popup('ask_password', {
-                                    title: 'Blocked',
-                                    body: _t('Discount limited, need approve by ' + manager_user.name + '. Please input pos security pin of manager'),
-                                    confirm: function (password) {
-                                        if (manager_user) {
-                                            if (manager_user['pos_security_pin'] != password) {
-                                                self.pos.gui.show_popup('dialog', {
-                                                    title: 'Error',
-                                                    body: 'POS Security pin of ' + manager_user.name + ' not correct !'
-                                                });
-                                            } else {
-                                                order.get_selected_orderline().set_discount(discount);
-                                            }
-                                        }
+                            if (self.pos.config.discount_unlock_by_manager) {
+                                var manager_validate = [];
+                                _.each(self.pos.config.manager_ids, function (user_id) {
+                                    var user = self.pos.user_by_id[user_id];
+                                    if (user) {
+                                        manager_validate.push({
+                                            label: user.name,
+                                            item: user
+                                        })
                                     }
                                 });
+                                if (manager_validate.length == 0) {
+                                    return self.pos.gui.show_popup('confirm', {
+                                        title: 'Warning',
+                                        body: 'Could not set discount bigger than: ' + self.pos.config.discount_limit_amount + ' . If is required, need manager approve but your pos not set manager users approve on Security Tab',
+                                    })
+                                }
+                                return self.pos.gui.show_popup('selection', {
+                                    title: 'Choice Manager Validate',
+                                    body: 'Only Manager can approve this Discount, please ask him',
+                                    list: manager_validate,
+                                    confirm: function (manager_user) {
+                                        if (!manager_user.pos_security_pin) {
+                                            return self.pos.gui.show_popup('confirm', {
+                                                title: 'Warning',
+                                                body: manager_user.name + ' have not set pos security pin before. Please set pos security pin first'
+                                            })
+                                        } else {
+                                            return self.pos.gui.show_popup('ask_password', {
+                                                title: 'Pos Security Pin of Manager',
+                                                body: _t('Your staff need approve discount is ' + discount + ' please approve'),
+                                                confirm: function (password) {
+                                                    if (manager_user['pos_security_pin'] != password) {
+                                                        self.pos.gui.show_popup('dialog', {
+                                                            title: 'Error',
+                                                            body: 'POS Security pin of ' + manager_user.name + ' not correct !'
+                                                        });
+                                                    } else {
+                                                        var selected_line = order.get_selected_orderline();
+                                                        selected_line.manager_user = manager_user;
+                                                        return selected_line.set_discount(discount);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                })
                             } else {
                                 return self.gui.show_popup('dialog', {
                                     title: _t('Warning'),
@@ -780,7 +821,7 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
         },
         active_reprint_last_order: function (buttons, selected_order) {
             if (buttons.button_print_last_order) {
-                if (this.pos.posbox_report_xml && this.pos.report_xml) {
+                if (this.pos.report_xml && this.pos.report_html) {
                     buttons.button_print_last_order.highlight(true);
 
                 } else {
@@ -796,34 +837,42 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
         set_total_gift: function (total_gift) {
             $('.total_gift').html(total_gift);
         },
+        set_total_taxes: function (amount_taxes) {
+            var amount_taxes = this.format_currency(amount_taxes);
+            $('.amount_taxes').html(amount_taxes);
+        },
         set_amount_total: function (amount_total) {
-            var amount_total = this.format_currency_no_symbol(amount_total)
+            var amount_total = this.format_currency(amount_total);
             $('.amount_total').html(amount_total);
         },
         set_total_items: function (count) {
             $('.set_total_items').html(count);
         },
         update_summary: function () {
-            this._super();
+            try {
+                this._super();
+            } catch (e) {
+                console.warn(e)
+            }
             var self = this;
-            setTimeout(function () {
-                $('input').click(function () {
-                    self.remove_event_keyboard();
-                });
-            }, 100);
             $('.mode-button').click(function () {
                 self.change_mode();
             });
-            $('.pay').click(function () {
-                self.remove_event_keyboard();
-            });
-            $('.set-customer').click(function () {
-                self.remove_event_keyboard();
-            });
-            var self = this;
+            if (this.pos.config.multi_lots) {
+                $(".line-lot-icon").addClass('oe_hidden');
+            }
             var selected_order = this.pos.get_order();
             var buttons = this.getParent().action_buttons;
             if (selected_order && buttons) {
+                if (selected_order.is_return && this.pos.config.hide_buttons_order_return) {
+                    for (var button in buttons) {
+                        buttons[button].invisible();
+                    }
+                } else {
+                    for (var button in buttons) {
+                        buttons[button].display()
+                    }
+                }
                 this.active_button_cash_management(buttons);
                 this.active_reprint_last_order(buttons, selected_order);
                 this.active_medical_insurance(buttons, selected_order);
@@ -852,22 +901,11 @@ odoo.define('pos_retail.screen_order_widget', function (require) {
                 if ($note) {
                     $note.textContent = selected_order.get_note();
                 }
-                if (selected_order.selected_orderline) {
-                    var check = selected_order.selected_orderline.is_multi_variant();
-                    var buttons = this.getParent().action_buttons;
-                    if (buttons && buttons.button_add_variants) {
-                        buttons.button_add_variants.highlight(check);
-                    }
-                    var has_variants = selected_order.selected_orderline.has_variants();
-                    if (buttons && buttons.button_remove_variants) {
-                        buttons.button_remove_variants.highlight(has_variants);
-                    }
-                }
-                /*
-                    Header order list
-                */
+                var total = selected_order ? selected_order.get_total_with_tax() : 0;
+                var taxes = selected_order ? total - selected_order.get_total_without_tax() : 0;
+                this.set_total_taxes(taxes);
                 this.set_total_items(selected_order.orderlines.length);
-                this.set_amount_total(selected_order.get_total_with_tax());
+                this.set_amount_total(total);
                 var promotion_lines = _.filter(selected_order.orderlines.models, function (line) {
                     return line.promotion;
                 });

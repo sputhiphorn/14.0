@@ -18,6 +18,7 @@
 
 .pos .modal-dialog .popup.session-popup {
     width: 850px;
+    height: 500px;
 }
 
 .pos .popup .session-title {
@@ -83,7 +84,9 @@
 .pos .modal-dialog .session-button:hover {
     background: #6EC89B;
 }
-
+.pos .pos-rightheader .header-button {
+    padding-right: 0px;
+}
 .pos .cashbox-delete {
     background: #FF5722;
     color: white !important;
@@ -96,7 +99,6 @@
 
 .box {
     display: block;
-    padding: 4px;
     margin: 10px 0;
     font-size: 16px;
     font-weight: normal;
@@ -123,7 +125,7 @@
     overflow: hidden;
     background: white;
     min-height: 34px;
-    font-family: "Lato";
+    font-family: "Roboto";
     font-size: 18px;
     color: #444;
     padding: 10px;

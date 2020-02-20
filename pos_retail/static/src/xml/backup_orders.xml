@@ -2,7 +2,7 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="BackUpOrdersWidget">
-        <div class="oe_status backup_icon">
+        <div class="oe_status backup_icon" title="Backup/Restore Orders">
             <img src="/pos_retail/static/src/icons/cloud.png" class="logo_shop_header"/>
         </div>
     </t>

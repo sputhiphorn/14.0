@@ -9,16 +9,7 @@
             <field name="arch" type="xml">
                 <form string="Remote session">
                     <group>
-                        <group>
-                            <field name="close_session"/>
-                            <field name="validate_and_post_entries"/>
-                            <field name="open_session"/>
-                        </group>
-                        <group>
-                            <field name="remove_cache"/>
-                            <field name="lock_session"/>
-                            <field name="unlock_session"/>
-                        </group>
+                        <field name="action"/>
                     </group>
                      <group string="Messages to sessions">
                         <field name="message" nolabel="1"/>

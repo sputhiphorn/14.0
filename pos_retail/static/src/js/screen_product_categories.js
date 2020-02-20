@@ -10,9 +10,21 @@ odoo.define('pos_retail.screen_product_categories', function (require) {
     var utils = require('web.utils');
     var round_pr = utils.round_precision;
     var models = require('point_of_sale.models');
-    var rpc = require('pos.rpc');
 
     screens.ProductCategoriesWidget.include({
+        renderElement: function () {
+            this._super();
+            var products_screen = this.gui.screen_instances['products'];
+            if (!products_screen) {
+                return null;
+            } else {
+                var order_widget = products_screen.order_widget;
+                if (!order_widget) {
+                    return null;
+                }
+                order_widget.event_input_linked_keyboard_event();
+            }
+        },
         perform_search: function (category, query, buy_result) {
             var self = this;
             this._super(category, query, buy_result);
@@ -44,20 +56,6 @@ odoo.define('pos_retail.screen_product_categories', function (require) {
                                 var product = self.pos.db.get_product_by_id(product['id'])
                                 if (product) {
                                     self.product_list_widget.set_product_list([product]);
-                                    var location = self.pos.get_location();
-                                    self.pos.product_find = product;
-                                    if (location) {
-                                        rpc.query({
-                                            model: 'stock.move',
-                                            method: 'get_stock_datas',
-                                            args: [location.id, [product['id']]],
-                                            context: {}
-                                        }).then(function (datas) {
-                                            if (datas[self.pos.product_find['id']] != undefined) {
-                                                self.pos.product_find['qty_available'] = 100;
-                                            }
-                                        })
-                                    }
                                 }
                                 return self.pos.gui.show_popup('dialog', {
                                     title: 'Great job',

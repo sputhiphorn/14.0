@@ -18,19 +18,19 @@ odoo.define('pos_retail.report', function (require) {
                 var list_report = [];
                 if (self.pos.config.report_product_summary) {
                     list_report.push({
-                        'label': 'Report products summary',
+                        'label': 'Report Products Summary',
                         'item': 1
                     })
                 }
                 if (self.pos.config.report_order_summary) {
                     list_report.push({
-                        'label': 'Report orders summary',
+                        'label': 'Report Orders Summary',
                         'item': 2
                     })
                 }
                 if (self.pos.config.report_payment_summary) {
                     list_report.push({
-                        'label': 'Report products summary',
+                        'label': 'Report Payment Summary',
                         'item': 3
                     })
                 }
@@ -122,14 +122,14 @@ odoo.define('pos_retail.report', function (require) {
             });
         },
         show_report: function (journal_details, salesmen_details, summary_data) {
-            this.pos.report_xml = QWeb.render('payment_summary_receipt', {
+            this.pos.report_html = QWeb.render('report_payment_summary_html', {
                 widget: this,
                 pos: this.pos,
                 journal_details: journal_details,
                 salesmen_details: salesmen_details,
                 summary_data: summary_data
             });
-            this.pos.posbox_report_xml = QWeb.render('posbox_payment_summary_receipt', {
+            this.pos.report_xml = QWeb.render('report_payment_summary_xml', {
                 widget: this,
                 pos: this.pos,
                 journal_details: journal_details,
@@ -155,8 +155,12 @@ odoo.define('pos_retail.report', function (require) {
                 var pos_session_id = self.pos.pos_session.id;
                 var val = {
                     'summary': summary,
-                    'session_id': pos_session_id
+                    'session_id': pos_session_id,
+                    'pos_branch_id': null
                 };
+                if (self.pos.config.pos_branch_id) {
+                    val['pos_branch_id'] = self.pos.config.pos_branch_id[0]
+                }
                 var params = {
                     model: 'pos.order',
                     method: 'payment_summary_report',
@@ -165,7 +169,7 @@ odoo.define('pos_retail.report', function (require) {
                 return rpc.query(params, {async: false}).then(function (res) {
                     if (res) {
                         if (Object.keys(res['journal_details']).length == 0 && Object.keys(res['salesmen_details']).length == 0) {
-                            self.pos.gui.show_popup('dialog', {
+                            self.pos.gui.show_popup('confirm', {
                                 title: 'Warning',
                                 body: 'No record found'
                             })
@@ -193,78 +197,74 @@ odoo.define('pos_retail.report', function (require) {
                     }
                 });
             } else {
-                var validate = true;
                 if (from_date == "" && to_date == "" || from_date != "" && to_date == "" || from_date == "" && to_date != "") {
                     if (!from_date) {
-                        this.wrong_input('input[name="from_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="from_date"]', "(*) From date is required");
                     } else {
                         this.passed_input('input[name="from_date"]');
                     }
                     if (!to_date) {
-                        this.wrong_input('input[name="to_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="to_date"]', "(*) To date is required");
                     } else {
                         this.passed_input('input[name="to_date"]');
                     }
                 } else if (from_date > to_date) {
-                    this.wrong_input('input[name="from_date"]');
-                    this.wrong_input('input[name="from_date"]');
-                    validate = false;
+                    this.wrong_input('input[name="from_date"]', "(*) From date required smaller than To date");
+                    return this.wrong_input('input[name="to_date"]', "(*) From date required smaller than To date");
                 }
-                if (validate == false) {
-                    return;
-                } else {
-                    var val = {
-                        'from_date': from_date,
-                        'to_date': to_date,
-                        'summary': summary
-                    };
-                    var params = {
-                        model: 'pos.order',
-                        method: 'payment_summary_report',
-                        args: [val],
-                    };
-                    this.from_date = fields['from_date'];
-                    this.to_date = fields['to_date'];
-                    return rpc.query(params, {async: false}).then(function (res) {
-                        if (res) {
-                            if (Object.keys(res['journal_details']).length == 0 && Object.keys(res['salesmen_details']).length == 0) {
-                                self.pos.gui.show_popup('dialog', {
-                                    title: 'Warning',
-                                    body: 'No record found'
-                                })
+                var val = {
+                    'from_date': from_date,
+                    'to_date': to_date,
+                    'summary': summary,
+                    'pos_branch_id': null
+                };
+                if (self.pos.config.pos_branch_id) {
+                    val['pos_branch_id'] = self.pos.config.pos_branch_id[0]
+                }
+                var params = {
+                    model: 'pos.order',
+                    method: 'payment_summary_report',
+                    args: [val],
+                };
+                this.from_date = fields['from_date'];
+                this.to_date = fields['to_date'];
+                return rpc.query(params, {async: false}).then(function (res) {
+                    if (res) {
+                        if (Object.keys(res['journal_details']).length == 0 && Object.keys(res['salesmen_details']).length == 0) {
+                            self.pos.gui.show_popup('confirm', {
+                                title: 'Warning',
+                                body: 'No record found'
+                            })
+                        } else {
+                            var journal_key = Object.keys(res['journal_details']);
+                            if (journal_key.length > 0) {
+                                var journal_details = res['journal_details'];
                             } else {
-                                var journal_key = Object.keys(res['journal_details']);
-                                if (journal_key.length > 0) {
-                                    var journal_details = res['journal_details'];
-                                } else {
-                                    var journal_details = false;
-                                }
-                                var sales_key = Object.keys(res['salesmen_details']);
-                                if (sales_key.length > 0) {
-                                    var salesmen_details = res['salesmen_details'];
-                                } else {
-                                    var salesmen_details = false;
-                                }
-                                var total = Object.keys(res['summary_data']);
-                                if (total.length > 0) {
-                                    var summary_data = res['summary_data'];
-                                } else {
-                                    var summary_data = false;
-                                }
-                                self.pos.report_xml = QWeb.render('payment_summary_receipt', {
-                                    widget: self,
-                                    pos: self.pos,
-                                    journal_details: journal_details,
-                                    salesmen_details: salesmen_details,
-                                    summary_data: summary_data
-                                });
-                                self.show_report(journal_details, salesmen_details, summary_data)
+                                var journal_details = false;
                             }
+                            var sales_key = Object.keys(res['salesmen_details']);
+                            if (sales_key.length > 0) {
+                                var salesmen_details = res['salesmen_details'];
+                            } else {
+                                var salesmen_details = false;
+                            }
+                            var total = Object.keys(res['summary_data']);
+                            if (total.length > 0) {
+                                var summary_data = res['summary_data'];
+                            } else {
+                                var summary_data = false;
+                            }
+                            self.pos.report_html = QWeb.render('report_payment_summary_html', {
+                                widget: self,
+                                pos: self.pos,
+                                journal_details: journal_details,
+                                salesmen_details: salesmen_details,
+                                summary_data: summary_data
+                            });
+                            self.show_report(journal_details, salesmen_details, summary_data)
                         }
-                    });
-                }
+                    }
+                });
             }
         },
     });
@@ -323,7 +323,7 @@ odoo.define('pos_retail.report', function (require) {
             });
         },
         show_report: function (state, from_date, to_date, total_categ_amount, total_amount, order_report, category_report, payment_report) {
-            this.pos.report_xml = QWeb.render('order_summary_receipt', {
+            this.pos.report_html = QWeb.render('report_order_summary_html', {
                 state: state,
                 from_date: from_date,
                 to_date: to_date,
@@ -335,7 +335,7 @@ odoo.define('pos_retail.report', function (require) {
                 category_report: category_report,
                 payment_report: payment_report,
             });
-            this.pos.posbox_report_xml = QWeb.render('posbox_order_summary_receipt', {
+            this.pos.report_xml = QWeb.render('report_order_summary_xml', {
                 state: state,
                 from_date: from_date,
                 to_date: to_date,
@@ -350,10 +350,8 @@ odoo.define('pos_retail.report', function (require) {
             this.gui.show_screen('report');
         },
         click_confirm: function () {
-            var validate = true;
             var self = this;
             var value = {};
-            var order = this.pos.get_order();
             var fields = {};
             this.$('.popup_field').each(function (idx, el) {
                 if (el.name == 'current_session_report') {
@@ -381,26 +379,24 @@ odoo.define('pos_retail.report', function (require) {
                 report_list.push('payment_summary_report')
             }
             if (fields.no_of_copies <= 0) {
-                this.wrong_input('input[name="no_of_copies"]');
-                validate = false;
-            } else {
-                this.passed_input('input[name="no_of_copies"]');
+                return this.wrong_input('input[name="no_of_copies"]', "(*) Missed No of Copies or smaller than or equal 0");
             }
             if (!fields['state']) {
                 fields['state'] = '';
             }
             if (fields['current_session_report'] == true) {
-                if (validate == false) {
-                    return;
-                }
                 var pos_session_id = self.pos.pos_session.id;
                 value = {
                     'from_date': fields['from_date'],
                     'to_date': fields['to_date'],
                     'state': state,
                     'summary': report_list,
-                    'session_id': pos_session_id
+                    'session_id': pos_session_id,
+                    'pos_branch_id': null,
                 };
+                if (self.pos.config.pos_branch_id) {
+                    value['pos_branch_id'] = self.pos.config.pos_branch_id[0]
+                }
                 var params = {
                     model: 'pos.order',
                     method: 'order_summary_report',
@@ -411,7 +407,7 @@ odoo.define('pos_retail.report', function (require) {
                     if (res) {
                         if (Object.keys(res['category_report']).length == 0 && Object.keys(res['order_report']).length == 0 &&
                             Object.keys(res['payment_report']).length == 0) {
-                            self.pos.gui.show_popup('dialog', {
+                            self.pos.gui.show_popup('confirm', {
                                 title: 'Warning',
                                 body: 'No record found'
                             })
@@ -459,90 +455,87 @@ odoo.define('pos_retail.report', function (require) {
             } else {
                 if (fields.from_date == "" && fields.to_date == "" || fields.from_date != "" && fields.to_date == "" || fields.from_date == "" && fields.to_date != "") {
                     if (fields.from_date == "") {
-                        this.wrong_input('input[name="from_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="from_date"]', "(*) From Date is required");
                     } else {
                         this.passed_input('input[name="from_date"]');
                     }
                     if (fields.to_date == "") {
-                        this.wrong_input('input[name="to_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="to_date"]', "(*) To Date is required");
                     } else {
                         this.passed_input('input[name="to_date"]');
                     }
                 } else if (fields.from_date > fields.to_date) {
-                    this.wrong_input('input[name="from_date"]');
-                    this.wrong_input('input[name="to_date"]');
-                    validate = false;
+                    this.wrong_input('input[name="from_date"]', "(*) From/To Date is required and From Date required smaller than To Date");
+                    return this.wrong_input('input[name="to_date"]', "(*) From/To Date is required and From Date required smaller than To Date");
                 }
-                if (validate == false) {
-                    return;
-                } else {
-                    value = {
-                        'from_date': fields.from_date,
-                        'to_date': fields.to_date,
-                        'state': state,
-                        'summary': report_list
-                    };
-                    var params = {
-                        model: 'pos.order',
-                        method: 'order_summary_report',
-                        args: [value],
-                    };
-                    this.from_date = fields.from_date;
-                    this.to_date = fields.to_date;
-                    return rpc.query(params, {async: false}).then(function (res) {
-                        var state = res['state'];
-                        if (res) {
-                            if (Object.keys(res['category_report']).length == 0 && Object.keys(res['order_report']).length == 0 &&
-                                Object.keys(res['payment_report']).length == 0) {
-                                self.pos.gui.show_popup('dialog', {
-                                    title: 'Warning',
-                                    body: 'No record found'
-                                })
-                            } else {
-                                self.pos.print_date = true;
-                                var total_categ_amount = 0.00;
-                                var total_amount = 0.00;
-                                if (res['category_report']) {
-                                    if (self.pos.state) {
-                                        _.each(res['category_report'], function (value, key) {
-                                            total_categ_amount += value[1];
-                                        });
-                                    }
-                                }
-                                if (res['payment_report']) {
-                                    if (self.pos.state) {
-                                        _.each(res['payment_report'], function (value, key) {
-                                            total_amount += value;
-                                        });
-                                    }
-                                }
-                                var category_report;
-                                var order_report;
-                                var payment_report;
-                                if (Object.keys(res.order_report).length == 0) {
-                                    order_report = false;
-                                } else {
-                                    order_report = res['order_report']
-                                }
-                                if (Object.keys(res.category_report).length == 0) {
-                                    category_report = false;
-                                } else {
-                                    category_report = res['category_report']
-                                }
-                                if (Object.keys(res.payment_report).length == 0) {
-                                    payment_report = false;
-                                } else {
-                                    payment_report = res['payment_report']
-                                }
-                                for (var i = 0; i < fields['no_of_copies']; i++) {
-                                    self.show_report(state, self.from_date, self.to_date, total_categ_amount, total_amount, order_report, category_report, payment_report)
+                value = {
+                    'from_date': fields.from_date,
+                    'to_date': fields.to_date,
+                    'state': state,
+                    'summary': report_list,
+                    'pos_branch_id': null
+                };
+                if (self.pos.config.pos_branch_id) {
+                    value['pos_branch_id'] = self.pos.config.pos_branch_id[0]
+                }
+                var params = {
+                    model: 'pos.order',
+                    method: 'order_summary_report',
+                    args: [value],
+                };
+                this.from_date = fields.from_date;
+                this.to_date = fields.to_date;
+                return rpc.query(params, {async: false}).then(function (res) {
+                    var state = res['state'];
+                    if (res) {
+                        if (Object.keys(res['category_report']).length == 0 && Object.keys(res['order_report']).length == 0 &&
+                            Object.keys(res['payment_report']).length == 0) {
+                            self.pos.gui.show_popup('confirm', {
+                                title: 'Warning',
+                                body: 'No record found'
+                            })
+                        } else {
+                            self.pos.print_date = true;
+                            var total_categ_amount = 0.00;
+                            var total_amount = 0.00;
+                            if (res['category_report']) {
+                                if (self.pos.state) {
+                                    _.each(res['category_report'], function (value, key) {
+                                        total_categ_amount += value[1];
+                                    });
                                 }
                             }
+                            if (res['payment_report']) {
+                                if (self.pos.state) {
+                                    _.each(res['payment_report'], function (value, key) {
+                                        total_amount += value;
+                                    });
+                                }
+                            }
+                            var category_report;
+                            var order_report;
+                            var payment_report;
+                            if (Object.keys(res.order_report).length == 0) {
+                                order_report = false;
+                            } else {
+                                order_report = res['order_report']
+                            }
+                            if (Object.keys(res.category_report).length == 0) {
+                                category_report = false;
+                            } else {
+                                category_report = res['category_report']
+                            }
+                            if (Object.keys(res.payment_report).length == 0) {
+                                payment_report = false;
+                            } else {
+                                payment_report = res['payment_report']
+                            }
+                            for (var i = 0; i < fields['no_of_copies']; i++) {
+                                self.show_report(state, self.from_date, self.to_date, total_categ_amount, total_amount, order_report, category_report, payment_report)
+                            }
                         }
-                    });
-                }
+                    }
+                });
             }
         },
     });
@@ -614,7 +607,7 @@ odoo.define('pos_retail.report', function (require) {
             category_summary,
             payment_summary,
             location_summary) {
-            this.pos.report_xml = QWeb.render('product_summary_receipt', {
+            this.pos.report_html = QWeb.render('report_product_summary_html', {
                 widget: this,
                 pos: this.pos,
                 from_date: from_date,
@@ -627,7 +620,7 @@ odoo.define('pos_retail.report', function (require) {
                 payment_summary: payment_summary,
                 location_summary: location_summary,
             });
-            this.pos.posbox_report_xml = QWeb.render('posbox_product_summary_receipt', {
+            this.pos.report_xml = QWeb.render('report_product_summary_xml', {
                 widget: this,
                 pos: this.pos,
                 from_date: from_date,
@@ -643,7 +636,6 @@ odoo.define('pos_retail.report', function (require) {
             this.gui.show_screen('report');
         },
         click_confirm: function () {
-            var validate = true;
             var self = this;
             var report_value = [];
             var fields = {};
@@ -664,10 +656,7 @@ odoo.define('pos_retail.report', function (require) {
                 }
             });
             if (fields.no_of_copies <= 0) {
-                this.wrong_input('input[name="no_of_copies"]');
-                validate = false;
-            } else {
-                this.passed_input('input[name="no_of_copies"]');
+                return this.wrong_input('input[name="no_of_copies"]', '(*) Field No of Copies required bigger than 0');
             }
             if (fields['product_summary']) {
                 report_value.push('product_summary')
@@ -681,9 +670,6 @@ odoo.define('pos_retail.report', function (require) {
             if (fields['product_summary']) {
                 report_value.push('payment_summary')
             }
-            if (validate == false) {
-                return;
-            }
             var from_date = fields.from_date;
             var to_date = fields.to_date;
             this.from_date = from_date;
@@ -694,8 +680,12 @@ odoo.define('pos_retail.report', function (require) {
                     'from_date': null,
                     'to_date': null,
                     'summary': report_value,
-                    'session_id': pos_session_id
+                    'session_id': pos_session_id,
+                    'pos_branch_id': null,
                 };
+                if (this.pos.config.pos_branch_id) {
+                    val['pos_branch_id'] = this.pos.config.pos_branch_id[0]
+                }
                 var params = {
                     model: 'pos.order',
                     method: 'product_summary_report',
@@ -707,8 +697,7 @@ odoo.define('pos_retail.report', function (require) {
                     if (res) {
                         if (Object.keys(res['category_summary']).length == 0 && Object.keys(res['product_summary']).length == 0 &&
                             Object.keys(res['location_summary']).length == 0 && Object.keys(res['payment_summary']).length == 0) {
-                            order.set_order_summary_report_mode(false);
-                            self.pos.gui.show_popup('dialog', {
+                            self.pos.gui.show_popup('confirm', {
                                 title: 'Warning',
                                 body: 'No record found'
                             })
@@ -774,31 +763,28 @@ odoo.define('pos_retail.report', function (require) {
             } else {
                 if (from_date == "" && to_date == "" || from_date != "" && to_date == "" || from_date == "" && to_date != "") {
                     if (from_date == "") {
-                        this.wrong_input('input[name="from_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="from_date"]', '(*) From Date required');
                     } else {
                         this.passed_input('input[name="from_date"]');
                     }
                     if (to_date == "") {
-                        this.wrong_input('input[name="to_date"]');
-                        validate = false;
+                        return this.wrong_input('input[name="to_date"]', "(*) To Date is required");
                     } else {
                         this.passed_input('input[name="to_date"]');
                     }
-                    if (validate == false) {
-                        return;
-                    }
                 } else if (from_date > to_date) {
                     this.wrong_input('input[name="from_date"]');
-                    this.wrong_input('input[name="to_date"]');
-                    validate = false
-                    return;
+                    return this.wrong_input('input[name="to_date"]', '(*) From Date could not bigger than To Date');
                 } else {
                     var val = {
                         'from_date': from_date,
                         'to_date': to_date,
-                        'summary': report_value
+                        'summary': report_value,
+                        'pos_branch_id': null
                     };
+                    if (this.pos.config.pos_branch_id) {
+                        val['pos_branch_id'] = this.pos.config.pos_branch_id[0]
+                    }
                     var params = {
                         model: 'pos.order',
                         method: 'product_summary_report',
@@ -808,8 +794,7 @@ odoo.define('pos_retail.report', function (require) {
                         if (res) {
                             if (Object.keys(res['category_summary']).length == 0 && Object.keys(res['product_summary']).length == 0 &&
                                 Object.keys(res['location_summary']).length == 0 && Object.keys(res['payment_summary']).length == 0) {
-                                order.set_order_summary_report_mode(false);
-                                self.pos.gui.show_popup('dialog', {
+                                self.pos.gui.show_popup('confirm', {
                                     title: 'Warning',
                                     body: 'No record found'
                                 })
@@ -883,15 +868,20 @@ odoo.define('pos_retail.report', function (require) {
         template: 'report',
         show: function () {
             this._super();
-            var self = this;
             this.render_receipt();
             this.handle_auto_print();
+            this.auto_print_network(); // TODO: supported module pos_retail_network_printer
         },
         handle_auto_print: function () {
             if (this.should_auto_print()) {
                 this.print();
             } else {
                 this.lock_screen(false);
+            }
+        },
+        auto_print_network: function() {
+            if (this.pos.epson_printer_default && this.pos.report_xml) {
+                this.pos.print_network(this.pos.report_xml, this.pos.epson_printer_default['ip']);
             }
         },
         should_auto_print: function () {
@@ -909,7 +899,13 @@ odoo.define('pos_retail.report', function (require) {
             window.print();
         },
         print_xml: function () {
-            this.pos.proxy.print_receipt(this.pos.posbox_report_xml);
+            var self = this;
+            this.pos.proxy.print_receipt(this.pos.report_xml);
+            if (!this.pos.report_xml) {
+                setTimeout(function () {
+                    self.print_web();
+                }, 500)
+            }
         },
         print: function () {
             var self = this;
@@ -923,8 +919,8 @@ odoo.define('pos_retail.report', function (require) {
                 this.print_xml();
                 this.lock_screen(false);
             }
+            this.auto_print_network()
         },
-
         click_back: function () {
             this.pos.gui.show_screen('products')
         },
@@ -942,10 +938,91 @@ odoo.define('pos_retail.report', function (require) {
             });
         },
         render_receipt: function () {
-            this.$('.pos-receipt-container').html(this.pos.report_xml);
+            this.$('.pos-receipt-container').html(this.pos.report_html);
         }
     });
 
     gui.define_screen({name: 'report', widget: report});
 
+    var popup_sale_summary_session_report = PopupWidget.extend({
+        template: 'popup_sale_summary_session_report',
+        show: function (options) {
+            var self = this;
+            options = options || {};
+            this.session_id = options.session_id;
+            if (!this.session_id) {
+                this.session_id = this.pos.pos_session.id
+            }
+            this._super(options);
+        },
+        show_report: function (report) {
+            var self = this;
+            var vals = {
+                widget: this,
+                pos: this.pos,
+                report: report,
+            };
+            this.pos.report_html = QWeb.render('report_sale_summary_session_html', vals);
+            this.pos.report_xml = QWeb.render('report_sale_summary_session_xml', vals);
+            this.gui.show_screen('report');
+            setTimeout(function () {
+                self.pos.gui.show_popup('confirm', {
+                    title: 'Are you want close session ?',
+                    body: 'If you need close session and leave pos screen, please click Confirm button',
+                    confirm: function () {
+                        self.pos.gui.close()
+                    }
+                })
+            }, 5000)
+        },
+        click_confirm: function () {
+            var self = this;
+            var params = {
+                model: 'pos.session',
+                method: 'build_sessions_report',
+                args: [[this.session_id]],
+            };
+            return rpc.query(params, {shadow: true}).then(function (values) {
+                self.show_report(values[self.session_id])
+            }).fail(function (err) {
+                self.pos.query_backend_fail(err);
+            });
+        },
+    });
+    gui.define_popup({name: 'popup_sale_summary_session_report', widget: popup_sale_summary_session_report});
+
+    var button_show_sale_summary_session_report = screens.ActionButtonWidget.extend({ // combo button
+        template: 'button_show_sale_summary_session_report',
+        button_click: function () {
+            var self = this;
+            var params = {
+                model: 'pos.session',
+                method: 'build_sessions_report',
+                args: [[this.pos.pos_session.id]],
+            };
+            return rpc.query(params, {shadow: true}).then(function (values) {
+                self.show_report(values[self.pos.pos_session.id])
+            }).fail(function (err) {
+                self.pos.query_backend_fail(err);
+            });
+        },
+        show_report: function (report) {
+            var vals = {
+                widget: this,
+                pos: this.pos,
+                report: report,
+            };
+            this.pos.report_html = QWeb.render('report_sale_summary_session_html', vals);
+            this.pos.report_xml = QWeb.render('report_sale_summary_session_xml', vals);
+            this.gui.show_screen('report');
+        },
+    });
+
+    screens.define_action_button({
+        'name': 'button_show_sale_summary_session_report',
+        'widget': button_show_sale_summary_session_report,
+        'condition': function () {
+            return true;
+        }
+    });
 });

@@ -45,13 +45,22 @@ odoo.define('pos_retail.order', function (require) {
             if (!this.seller && this.pos.default_seller) {
                 this.seller = this.pos.default_seller;
             }
-            this.picking_delayed = this.pos.config.picking_delayed;
+            if (!this.location) {
+                var location = this.get_location();
+                this.set_location(location)
+            }
+            if (!this.seller && this.pos.config.default_seller_id && this.user_id) {
+                var seller = this.pos.user_by_id[this.user_id];
+                if (seller) {
+                    this.seller = seller;
+                }
+            }
         },
         init_from_JSON: function (json) {
             // we removed line have product removed
             var lines = json.lines;
             var lines_without_product_removed = [];
-            for (var i=0; i < lines.length; i++) {
+            for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
                 var product_id = line[2]['product_id'];
                 var product = this.pos.db.get_product_by_id(product_id);
@@ -101,8 +110,10 @@ odoo.define('pos_retail.order', function (require) {
             if (json.parent_id) {
                 this.parent_id = json.parent_id;
             }
-            if (json.invoice_journal_id) {
-                this.invoice_journal_id = json.invoice_journal_id;
+            if (json.sale_journal) {
+                this.sale_journal = json.sale_journal;
+            } else {
+                this.sale_journal = this.pos.get_default_sale_journal();
             }
             if (json.ean13) {
                 this.ean13 = json.ean13;
@@ -155,13 +166,15 @@ odoo.define('pos_retail.order', function (require) {
             if (json.user_id) {
                 this.seller = this.pos.user_by_id[json.user_id];
             }
-            this.picking_delayed = this.pos.config.picking_delayed;
+            if (json.pos_branch_id) {
+                this.pos_branch_id = json.pos_branch_id;
+            }
             return res;
         },
         export_as_JSON: function () {
             var json = _super_Order.export_as_JSON.apply(this, arguments);
             if (this.seller) {
-                this.user_id = this.seller['id'];
+                json.user_id = this.seller['id'];
             }
             if (this.partial_payment) {
                 json.partial_payment = this.partial_payment
@@ -197,8 +210,10 @@ odoo.define('pos_retail.order', function (require) {
             if (this.parent_id) {
                 json.parent_id = this.parent_id;
             }
-            if (this.invoice_journal_id) {
-                json.invoice_journal_id = this.invoice_journal_id;
+            if (this.sale_journal) {
+                json.sale_journal = this.sale_journal;
+            } else {
+                this.sale_journal = this.pos.get_default_sale_journal();
             }
             if (this.note) {
                 json.note = this.note;
@@ -210,30 +225,15 @@ odoo.define('pos_retail.order', function (require) {
                 json.ean13 = this.ean13;
             }
             if (!this.ean13 && this.uid) {
-                var ean13 = '998';
-                if (this.pos.user.id) {
-                    ean13 += this.pos.user.id;
-                }
-                if (this.sequence_number) {
-                    ean13 += this.sequence_number;
-                }
-                if (this.pos.config.id) {
-                    ean13 += this.pos.config.id;
-                }
-                var format_ean13 = this.uid.split('-');
-                for (var i in format_ean13) {
-                    ean13 += format_ean13[i];
-                }
-                ean13 = ean13.split("");
-                var ean13_array = []
-                var ean13_str = ""
+                var ean13_code = this.zero_pad(this.pos.user.id, 4) + this.zero_pad(this.pos.pos_session.login_number, 4) + this.zero_pad(this.sequence_number, 4);
+                var ean13 = ean13_code.split("");
+                var ean13_array = [];
                 for (var i = 0; i < ean13.length; i++) {
                     if (i < 12) {
-                        ean13_str += ean13[i]
                         ean13_array.push(ean13[i])
                     }
                 }
-                this.ean13 = ean13_str + this.generate_unique_ean13(ean13_array).toString()
+                this.ean13 = ean13_code + this.generate_unique_ean13(ean13_array).toString();
             }
             if (!this.index_number_order && this.uid) {
                 var index_number_order = '777';
@@ -251,18 +251,15 @@ odoo.define('pos_retail.order', function (require) {
                     index_number_order += format_index_number_order[i];
                 }
                 index_number_order = index_number_order.split("");
-                var index_number_order_array = []
-                var index_number_order_str = ""
+                var index_number_order_array = [];
+                var index_number_order_str = "";
                 for (var i = 0; i < index_number_order.length; i++) {
                     if (i < 12) {
-                        index_number_order_str += index_number_order[i]
+                        index_number_order_str += index_number_order[i];
                         index_number_order_array.push(index_number_order[i])
                     }
                 }
                 this.index_number_order = index_number_order_str + this.generate_unique_ean13(index_number_order_array).toString();
-            }
-            if (this.pos.server_version == 10 && this.pricelist) { // export price list for version 10
-                json.pricelist_id = this.pricelist.id;
             }
             if (this.lock) {
                 json.lock = this.lock;
@@ -281,13 +278,17 @@ odoo.define('pos_retail.order', function (require) {
             if (this.guest_number) {
                 json.guest_number = this.guest_number.id
             }
-            json.location_id = this.pos.get_location()['id'];
             if (this.add_credit) {
                 json.add_credit = this.add_credit
             } else {
                 json.add_credit = false
             }
-            json.picking_delayed = this.pos.config.picking_delayed
+            if (this.location) {
+                json.location_id = this.location['id'];
+            }
+            if (this.pos.config.pos_branch_id) {
+                json.pos_branch_id = this.pos.config.pos_branch_id[0];
+            }
             return json;
         },
         export_for_printing: function () {
@@ -296,7 +297,14 @@ odoo.define('pos_retail.order', function (require) {
             if (this.seller) {
                 receipt['seller'] = this.seller;
             }
-            receipt['location'] = this.pos.get_location();
+            if (this.location) {
+                receipt['location'] = this.location;
+            } else {
+                var stock_location_id = this.pos.config.stock_location_id;
+                if (stock_location_id) {
+                    receipt['location'] = this.pos.stock_location_by_id[stock_location_id[0]];
+                }
+            }
             receipt['guest'] = this.guest;
             receipt['guest_number'] = this.guest_number;
             receipt['medical_insurance'] = null;
@@ -324,9 +332,9 @@ odoo.define('pos_retail.order', function (require) {
                     var line = orderlines[i];
                     var pos_categ_id = line['product']['pos_categ_id']
                     line['tax_amount'] = line.get_tax();
-                    if (pos_categ_id && pos_categ_id.length == 2) {
-                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0])
-                        var category = this.pos.db.category_by_id[root_category_id]
+                    if (pos_categ_id && pos_categ_id.length == 2 && order.get_root_category_by_category_id(pos_categ_id[0]) && this.pos.db.category_by_id[order.get_root_category_by_category_id(pos_categ_id[0])]) {
+                        var root_category_id = order.get_root_category_by_category_id(pos_categ_id[0]);
+                        var category = this.pos.db.category_by_id[root_category_id];
                         var category_name = category['name'];
                         if (!orderlines_by_category_name[category_name]) {
                             orderlines_by_category_name[category_name] = [line];
@@ -360,6 +368,67 @@ odoo.define('pos_retail.order', function (require) {
             receipt['total_due'] = order.get_due(); // save amount due if have (display on receipt of parital order)
             return receipt
         },
+        zero_pad: function (num, size) {
+            var s = "" + num;
+            while (s.length < size) {
+                s = s + Math.floor(Math.random() * 10).toString();
+            }
+            return s;
+        },
+        set_location: function (location) {
+            this.location = location;
+            this.trigger('change', this);
+        },
+        get_location: function () {
+            var stock_location_id = this.pos.config.stock_location_id;
+            var selected_order = this;
+            if (selected_order && selected_order.location) {
+                return selected_order.location;
+            }
+            if (stock_location_id) {
+                var location = this.pos.stock_location_by_id[stock_location_id[0]];
+                return location;
+            } else {
+                return null
+            }
+        },
+        show_popup_multi_lot: function () {
+            var self = this;
+            this.pos.gui.show_popup('popup_set_multi_lots', {
+                'title': 'Add lots',
+                'body': 'Allow you set multi lots on selected line, made sure total quantities of lots the same of quantity of selected line',
+                'selected_orderline': this.selected_orderline,
+                'lots': this.pos.lot_by_product_id[this.selected_orderline.product.id],
+                confirm: function (lot_ids) {
+                    var selected_orderline = self.selected_orderline;
+                    var lot_selected = [];
+                    for (var i = 0; i < lot_ids.length; i++) {
+                        var lot = lot_ids[i];
+                        var lot_record = self.pos.lot_by_id[lot['id']];
+                        if (lot_record && lot['quantity'] && lot['quantity'] > 0) {
+                            lot['name'] = lot_record['name'];
+                            lot_selected.push(lot)
+                        }
+                    }
+                    selected_orderline.lot_ids = lot_selected;
+                    selected_orderline.trigger('change', selected_orderline);
+                    selected_orderline.trigger('trigger_update_line');
+                    if (lot_selected.length == 0) {
+                        return self.pos.gui.show_popup('dialog', {
+                            title: 'Warning',
+                            body: 'Lots removed out of line selected'
+                        })
+                    }
+                }
+            })
+        },
+        display_lot_popup: function () {
+            if (!this.pos.config.multi_lots) {
+                return _super_Order.display_lot_popup.apply(this, arguments);
+            } else {
+                return this.show_popup_multi_lot();
+            }
+        },
         get_medical_insurance: function () {
             if (this.medical_insurance) {
                 return this.medical_insurance
@@ -375,6 +444,7 @@ odoo.define('pos_retail.order', function (require) {
             }
         },
         set_client: function (client) {
+            var self = this;
             var res = _super_Order.set_client.apply(this, arguments);
             if (client) {
                 var partial_payment_orders = _.filter(this.pos.db.get_pos_orders(), function (order) {
@@ -392,16 +462,51 @@ odoo.define('pos_retail.order', function (require) {
                         }
                     }
                     warning_message += ' not payment full, please check it before made new order';
-                    try {
+                    if (this.pos.gui.popup_instances['dialog']) {
                         this.pos.gui.show_popup('dialog', {
                             title: 'WARNING',
                             body: warning_message,
-                            timer: 2500
                         })
-                    } catch (e) {
-
                     }
-
+                }
+                if (client.group_ids.length > 0) {
+                    var list = [];
+                    for (var i = 0; i < client.group_ids.length; i++) {
+                        var group_id = client.group_ids[i];
+                        var group = this.pos.membership_group_by_id[group_id];
+                        if (group.pricelist_id) {
+                            list.push({
+                                'label': group.name,
+                                'item': group
+                            });
+                        }
+                    }
+                    if (list.length > 0 && this.pos.gui.popup_instances['selection']) {
+                        setTimeout(function () {
+                            self.pos.gui.show_popup('selection', {
+                                title: _t('Please add group/membership to customer ' + client.name),
+                                list: list,
+                                confirm: function (group) {
+                                    if (!self.pos.pricelist_by_id || !self.pos.pricelist_by_id[group.pricelist_id[0]]) {
+                                        return self.pos.gui.show_popup('dialog', {
+                                            title: 'Warning',
+                                            body: 'Your POS not added pricelist ' + group.pricelist_id[1],
+                                        })
+                                    }
+                                    var pricelist = self.pos.pricelist_by_id[group.pricelist_id[0]];
+                                    var order = self.pos.get_order();
+                                    if (order && pricelist) {
+                                        order.set_pricelist(pricelist);
+                                        return self.pos.gui.show_popup('dialog', {
+                                            title: 'Succeed',
+                                            body: group.pricelist_id[1] + ' added',
+                                            color: 'success'
+                                        })
+                                    }
+                                }
+                            });
+                        }, 1000);
+                    }
                 }
             }
             return res
@@ -455,39 +560,40 @@ odoo.define('pos_retail.order', function (require) {
             }
         },
         validate_payment: function () {
-            /*
-                    If pos config check to validate payment
-                    POS screen auto popup and ask password for go to next screen
-             */
-            var self = this;
-            if (this.pos.config.validate_payment) {
+            if (this.pos.config.validate_payment) { // TODO: validate payment
                 this.pos.gui.show_screen('products');
-                return this.pos.gui.show_popup('ask_password', {
-                    title: 'Blocked',
-                    body: 'Please input pos pass pin for payment order',
-                    confirm: function (value) {
-                        var pin;
-                        if (self.pos.config.validate_by_user_id) {
-                            var user_validate = self.pos.user_by_id[self.pos.config.validate_by_user_id[0]];
-                            pin = user_validate['pos_security_pin']
-                        } else {
-                            pin = self.pos.user.pos_security_pin
-                        }
-                        if (value != pin) {
-                            return self.pos.gui.show_popup('dialog', {
-                                title: 'Wrong',
-                                body: 'Password not correct, please check pos security pin'
-                            })
-                        } else {
-                            return self.pos.gui.show_screen('payment');
-                        }
-                    }
-                })
+                this.pos._validate_by_manager("this.pos.gui.show_screen('payment')");
             }
         },
         validate_payment_order: function () {
             var self = this;
-            var client = this.get_client()
+            var client = this.get_client();
+            if (this.pos.config.multi_lots) {
+                var orderlines = this.orderlines.models; // checking multi lots
+                for (var i = 0; i < orderlines.length; i++) {
+                    var orderline = orderlines[i];
+                    if (orderline.product.tracking == 'lot') {
+                        if (!orderline.lot_ids) {
+                            this.pos.gui.show_screen('products');
+                            return this.pos.gui.show_popup('confirm', {
+                                'title': _t('Error'),
+                                'body': _t('Product ' + orderline.product.display_name + ' null lots. Because your pos active multi lots, required add lots')
+                            });
+                        }
+                        var sum = 0;
+                        for (var j = 0; j < orderline.lot_ids.length; j++) {
+                            sum += parseFloat(orderline.lot_ids[j]['quantity'])
+                        }
+                        if (sum != orderline.quantity && sum != 0) {
+                            this.pos.gui.show_screen('products');
+                            return this.pos.gui.show_popup('confirm', {
+                                'title': _t('Could not process payment'),
+                                'body': _t('Product ' + orderline.product.display_name + ' required set quantity of lots the same with quantity of line. And your pos active multi lots, required add lots')
+                            });
+                        }
+                    }
+                }
+            }
             if (!client && this.pos.config.add_customer_before_products_already_in_shopping_cart) {
                 setTimeout(function () {
                     self.pos.gui.show_screen('products');
@@ -511,27 +617,6 @@ odoo.define('pos_retail.order', function (require) {
                     title: 'Warning',
                     body: 'You could not applied redeem point bigger than client point',
                 });
-            }
-            // checking multi lots
-            var orderlines = this.orderlines.models;
-            for (var i=0; i < orderlines.length; i++) {
-                var orderline = orderlines[i];
-                if (orderline.lot_ids) {
-                    var sum = 0;
-                    for (var j = 0; j < orderline.lot_ids.length; j++) {
-                        sum += parseFloat(orderline.lot_ids[j]['quantity'])
-                    }
-                    if (sum == 0) {
-                        continue
-                    }
-                    if (sum > orderline.quantity || sum < orderline.quantity) {
-                        this.pos.gui.show_screen('products');
-                        return this.pos.gui.show_popup('confirm', {
-                            'title': _t('Total quantity of lots wrong'),
-                            'body': _t('Product ' + orderline.product.display_name + ' have difference total quantity of lots with quantity of line. Total quantity of lots is: ' + sum + ' but quantity of product is: ' + orderline.quantity)
-                        });
-                    }
-                }
             }
             if (!this.is_return) {
                 this.validate_promotion();
@@ -658,29 +743,6 @@ odoo.define('pos_retail.order', function (require) {
                     $journal_element.addClass('oe_hidden');
                 }
             }
-            var company_currency = this.pos.company.currency_id; // return amount with difference currency
-            if (paymentline && paymentline.cashregister && paymentline.cashregister.currency_id && paymentline.cashregister.currency_id[0] != company_currency[0]) {
-                var new_change = -this.get_total_with_tax();
-                var lines = this.paymentlines.models;
-                var company_currency = this.pos.company.currency_id;
-                var company_currency_data = this.pos.currency_by_id[company_currency[0]];
-                for (var i = 0; i < lines.length; i++) {
-                    var selected_currency = this.pos.currency_by_id[lines[i].cashregister.currency_id[0]];
-                    var selected_rate = selected_currency['rate'];
-                    var amount_of_line = lines[i].get_amount();
-                    new_change += amount_of_line * selected_rate / company_currency_data['rate'];
-                    if (lines[i] === paymentline) {
-                        break;
-                    }
-                }
-                var currency_change = round_pr(Math.max(0, new_change), this.pos.currency.rounding);
-                if (currency_change > 0) {
-                    this.active_button_add_wallet(true);
-                } else {
-                    this.active_button_add_wallet(false);
-                }
-                return currency_change
-            }
             if (change > 0) {
                 this.active_button_add_wallet(true);
             } else {
@@ -688,52 +750,13 @@ odoo.define('pos_retail.order', function (require) {
             }
             return change;
         },
-        get_due: function (paymentline) {
+        get_due_with_currency: function (paymentline) {
             var due = _super_Order.get_due.apply(this, arguments);
-            if (!paymentline) {
-                return due;
+            var selected_currency = this.selected_currency;
+            if (selected_currency) {
+                return due * selected_currency['rate']
             }
-            var active_multi_currency = false;
-            var lines = this.paymentlines.models;
-            var company_currency = this.pos.company.currency_id;
-            var company_currency_data = this.pos.currency_by_id[company_currency[0]];
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-                var currency_id_of_line = line.cashregister.currency_id[0];
-                var currency_of_line = this.pos.currency_by_id[currency_id_of_line];
-                if (currency_of_line['id'] != company_currency_data['id']) {
-                    active_multi_currency = true;
-                }
-            }
-            var paymentline_currency_id = paymentline.cashregister.currency_id[0]
-            var paymentline_currency = this.pos.currency_by_id[paymentline_currency_id];
-            var payment_rate = paymentline_currency['rate'];
-            if (paymentline_currency['id'] != company_currency_data['id']) {
-                active_multi_currency = true
-            }
-            if (!active_multi_currency || active_multi_currency == false) {
-                return due;
-            } else {
-                var total_amount_with_tax = this.get_total_with_tax();
-                if (!payment_rate || payment_rate == 0) {
-                    return due
-                }
-                var new_due = total_amount_with_tax * payment_rate / company_currency_data['rate'];
-                var lines = this.paymentlines.models;
-                for (var i = 0; i < lines.length; i++) {
-                    if (lines[i] === paymentline) {
-                        break;
-                    } else {
-                        var line = lines[i];
-                        var line_cashregister = line['cashregister'];
-                        var line_currency_rate = this.pos.currency_by_id[line_cashregister['currency_id'][0]]['rate'];
-                        var line_amount = lines[i].get_amount() * line_currency_rate;
-                        new_due -= line_amount * payment_rate / company_currency_data['rate'];
-                    }
-                }
-                var new_due = round_pr(Math.max(0, new_due), this.pos.currency.rounding);
-                return new_due
-            }
+            return due
         },
         get_due_without_rounding: function (paymentline) {
             if (!paymentline) {
@@ -750,31 +773,6 @@ odoo.define('pos_retail.order', function (require) {
                 }
             }
             return due;
-        },
-        get_total_paid: function () {
-            var total_paid = _super_Order.get_total_paid.apply(this, arguments);
-            var lines = this.paymentlines.models;
-            var active_multi_currency = false;
-            var total_paid_multi_currency = 0;
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-                var currency = line.cashregister.currency_id;
-                var company_currency = this.pos.company.currency_id;
-                var company_currency_data = this.pos.currency_by_id[company_currency[0]];
-                if (currency[0] != company_currency[0]) {
-                    var register_currency = this.pos.currency_by_id[currency[0]];
-                    var register_rate = register_currency['rate'];
-                    active_multi_currency = true;
-                    total_paid_multi_currency += line.get_amount() * register_rate / company_currency_data['rate'];
-                } else {
-                    total_paid_multi_currency += line.get_amount()
-                }
-            }
-            if (active_multi_currency == true) {
-                return round_pr(Math.max(0, total_paid_multi_currency), this.pos.currency.rounding);
-            } else {
-                return total_paid;
-            }
         },
         generate_unique_ean13: function (array_code) {
             if (array_code.length != 12) {
@@ -796,6 +794,13 @@ odoo.define('pos_retail.order', function (require) {
             return window.location.origin + '/web/image?model=product.product&field=image_medium&id=' + product.id;
         },
         add_product: function (product, options) {
+            var self = this;
+            if (!this.pos.config.allow_order_out_of_stock && product.type == 'product' && product['qty_available'] <= 0) {
+                return this.pos.gui.show_popup('dialog', {
+                    title: 'Warning',
+                    body: 'Your POS Config not allow sale when products out of stock',
+                });
+            }
             if (product && product['qty_available'] && product['qty_available'] <= 0 && this.pos.config['allow_order_out_of_stock'] == false && product['type'] == 'product') {
                 return this.pos.gui.show_popup('dialog', {
                     title: 'Warning',
@@ -814,7 +819,7 @@ odoo.define('pos_retail.order', function (require) {
             if (selected_orderline && combo_items) {
                 selected_orderline['combo_items'] = combo_items;
                 var price_extra = 0;
-                for (var i=0; i < combo_items.length; i++) {
+                for (var i = 0; i < combo_items.length; i++) {
                     var combo_item = combo_items[i];
                     if (combo_item['price_extra']) {
                         price_extra += combo_item['price_extra'];
@@ -829,6 +834,14 @@ odoo.define('pos_retail.order', function (require) {
             var product_tmpl_id = product['product_tmpl_id'];
             if (product_tmpl_id && selected_orderline && product_tmpl_id.length == undefined && product['cross_selling']) {
                 selected_orderline.show_cross_sale();
+            }
+            if (this.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id]) {
+                setTimeout(function () {
+                    self.pos.gui.show_popup('popup_select_variants', {
+                        variants: self.pos.variant_by_product_tmpl_id[selected_orderline.product.product_tmpl_id],
+                        selected_orderline: selected_orderline,
+                    });
+                }, 500)
             }
             return res
         },
@@ -885,25 +898,15 @@ odoo.define('pos_retail.order', function (require) {
     models.Orderline = models.Orderline.extend({
         initialize: function (attributes, options) {
             var res = _super_Orderline.initialize.apply(this, arguments);
-            this.combo_items = this.combo_items || [];
-            this.tags = this.tags || [];
-            this.variants = this.variants || [];
-            if (!this.variants) {
-                this.variants = [];
-            }
             if (this.order && this.order.seller) {
                 this.seller = this.order.seller
-            }
-            else if (this.pos.default_seller) {
+            } else if (this.pos.default_seller) {
                 this.seller = this.pos.default_seller
             }
             return res;
         },
         init_from_JSON: function (json) {
             var res = _super_Orderline.init_from_JSON.apply(this, arguments);
-            if (json.variants) {
-                this.variants = json.variants
-            }
             if (json.user_id) {
                 var seller = this.pos.user_by_id[json.user_id];
                 if (seller) {
@@ -911,32 +914,35 @@ odoo.define('pos_retail.order', function (require) {
                 }
             }
             if (json.tag_ids && json.tag_ids.length) {
-                this.tags = [];
                 var tag_ids = json.tag_ids[0][2];
-                for (var i = 0; i < tag_ids.length; i++) {
-                    var tag_id = tag_ids[i];
-                    var tag = this.pos.tag_by_id[tag_id];
-                    this.tags.push(tag);
+                if (tag_ids) {
+                    this.set_tags(tag_ids)
                 }
             }
             if (json.is_return) {
                 this.is_return = json.is_return;
             }
-            if (json.combo_items) {
-                this.combo_items = json.combo_items;
+            if (json.combo_item_ids && json.combo_item_ids.length) {
+                var combo_item_ids = json.combo_item_ids[0][2];
+                if (combo_item_ids) {
+                    this.set_combo_items(combo_item_ids)
+                }
+            }
+            if (json.variant_ids && json.variant_ids.length) {
+                var variant_ids = json.variant_ids[0][2];
+                if (variant_ids) {
+                    this.set_variants(variant_ids)
+                }
             }
             if (json.uom_id) {
                 this.uom_id = json.uom_id;
-                var unit = this.pos.units_by_id[json.uom_id]
+                var unit = this.pos.units_by_id[json.uom_id];
                 if (unit) {
                     this.product.uom_id = [unit['id'], unit['name']];
                 }
             }
             if (this.note) {
                 this.note = this.set_line_note(json.note);
-            }
-            if (json.variants) {
-                this.variants = json.variants
             }
             if (json.discount_reason) {
                 this.discount_reason = json.discount_reason
@@ -953,6 +959,12 @@ odoo.define('pos_retail.order', function (require) {
             if (json.lot_ids) {
                 this.lot_ids = json.lot_ids;
             }
+            if (json.manager_user_id) {
+                this.manager_user = this.pos.user_by_id[json.manager_user_id]
+            }
+            if (json.pos_branch_id) {
+                this.pos_branch_id = json.pos_branch_id
+            }
             return res;
         },
         export_as_JSON: function () {
@@ -960,17 +972,10 @@ odoo.define('pos_retail.order', function (require) {
             if (this.seller) {
                 json.user_id = this.seller.id;
             }
-            if (this.variants) {
-                json.variants = this.variants;
-            }
-            if (this.tags) {
-                var tag_ids = [];
-                for (var i = 0; i < this.tags.length; i++) {
-                    tag_ids.push(this.tags[i].id)
-                }
-                if (tag_ids.length) {
-                    json.tag_ids = [[6, false, tag_ids]]
-                }
+            if (this.tags && this.tags.length) {
+                json.tag_ids = [[6, false, _.map(this.tags, function (tag) {
+                    return tag.id;
+                })]];
             }
             if (this.get_line_note()) {
                 json.note = this.get_line_note();
@@ -978,14 +983,18 @@ odoo.define('pos_retail.order', function (require) {
             if (this.is_return) {
                 json.is_return = this.is_return;
             }
-            if (this.combo_items) {
-                json.combo_items = this.combo_items;
+            if (this.combo_items && this.combo_items.length) {
+                json.combo_item_ids = [[6, false, _.map(this.combo_items, function (item) {
+                    return item.id;
+                })]];
             }
             if (this.uom_id) {
                 json.uom_id = this.uom_id
             }
-            if (this.variants) {
-                json.variants = this.variants;
+            if (this.variants && this.variants.length) {
+                json.variant_ids = [[6, false, _.map(this.variants, function (variant) {
+                    return variant.id;
+                })]];
             }
             if (this.discount_reason) {
                 json.discount_reason = this.discount_reason
@@ -1000,7 +1009,22 @@ odoo.define('pos_retail.order', function (require) {
                 json.packaging_id = this.packaging.id
             }
             if (this.lot_ids) {
-                json.lot_ids = this.lot_ids;
+                var pack_lot_ids = json.pack_lot_ids;
+                for (var i = 0; i < this.lot_ids.length; i++) {
+                    var lot = this.lot_ids[i];
+                    pack_lot_ids.push([0, 0, {
+                        lot_name: lot['name'],
+                        quantity: lot['quantity'],
+                        lot_id: lot['id']
+                    }]);
+                }
+                json.pack_lot_ids = pack_lot_ids;
+            }
+            if (this.manager_user) {
+                json.manager_user_id = this.manager_user.id
+            }
+            if (this.pos.config.pos_branch_id) {
+                json.pos_branch_id = this.pos.config.pos_branch_id[0]
             }
             return json;
         },
@@ -1008,6 +1032,50 @@ odoo.define('pos_retail.order', function (require) {
             var orderline = _super_Orderline.clone.call(this);
             orderline.note = this.note;
             return orderline;
+        },
+        set_combo_items: function (combo_item_ids) {
+            this.combo_items = [];
+            for (var index in combo_item_ids) {
+                var combo_item_id = combo_item_ids[index];
+                var combo_item = this.pos.combo_item_by_id[combo_item_id];
+                if (combo_item) {
+                    this.combo_items.push(combo_item)
+                }
+            }
+            this.trigger('change', this)
+        },
+        set_tags: function (tag_ids) {
+            this.tags = [];
+            for (var index in tag_ids) {
+                var tag_id = tag_ids[index];
+                var tag = this.pos.tag_by_id[tag_id];
+                if (tag) {
+                    this.tags.push(tag)
+                }
+            }
+            this.trigger('change', this)
+        },
+        set_discount_price: function (price_will_discount, tax) {
+            if (tax.include_base_amount) {
+                var line_subtotal = this.get_price_with_tax() / this.quantity;
+                var tax_before_discount = (line_subtotal - line_subtotal / (1 + tax.amount / line_subtotal));
+                var price_before_discount = line_subtotal - tax_before_discount; // b
+                var tax_discount = price_will_discount - price_will_discount / (1 + tax.amount / price_will_discount);
+                var price_discount = price_will_discount - tax_discount; // d
+                var price_exincluded_discount = price_before_discount - price_discount;
+                var new_tax_wihtin_discount = price_exincluded_discount - price_exincluded_discount / (1 + tax.amount / price_exincluded_discount);
+                var new_price_wihtin_discount = line_subtotal - price_will_discount;
+                var new_price_without_tax = new_price_wihtin_discount - new_tax_wihtin_discount;
+                var new_price_within_tax = new_price_without_tax + new_tax_wihtin_discount;
+                this.set_unit_price(new_price_within_tax);
+                this.trigger('change', this);
+            } else {
+                var tax_discount = tax.amount / 100 * price_will_discount;
+                var price_discount = price_will_discount - tax_discount;
+                var new_price_within_tax = this.price - price_discount - (0.91 * (parseInt(price_will_discount / 100)));
+                this.set_unit_price(new_price_within_tax);
+                this.trigger('change', this);
+            }
         },
         export_for_printing: function () {
             var receipt_line = _super_Orderline.export_for_printing.apply(this, arguments);
@@ -1036,22 +1104,22 @@ odoo.define('pos_retail.order', function (require) {
             }
             return receipt_line;
         },
-        get_price_included_tax_by_price_of_item: function(price_unit, quantity){
+        get_price_included_tax_by_price_of_item: function (price_unit, quantity) {
             var taxtotal = 0;
-            var product =  this.get_product();
+            var product = this.get_product();
             var taxes_ids = product.taxes_id;
-            var taxes =  this.pos.taxes;
+            var taxes = this.pos.taxes;
             var taxdetail = {};
             var product_taxes = [];
 
-            _(taxes_ids).each(function(el){
-                product_taxes.push(_.detect(taxes, function(t){
+            _(taxes_ids).each(function (el) {
+                product_taxes.push(_.detect(taxes, function (t) {
                     return t.id === el;
                 }));
             });
 
             var all_taxes = this.compute_all(product_taxes, price_unit, quantity, this.pos.currency.rounding);
-            _(all_taxes.taxes).each(function(tax) {
+            _(all_taxes.taxes).each(function (tax) {
                 taxtotal += tax.amount;
                 taxdetail[tax.id] = tax.amount;
             });
@@ -1064,8 +1132,12 @@ odoo.define('pos_retail.order', function (require) {
             };
         },
         set_unit_price: function (price) {
+            var discount_product_id = null;
+            if (this.pos.config.discount_product_id) {
+                discount_product_id = this.pos.config.discount_product_id[0]
+            }
             var self = this;
-            if (this.product && (parseFloat(price) < this.product.minimum_list_price) && !this.packaging && !this.promotion) {
+            if (this.product && (parseFloat(price) < this.product.minimum_list_price) && !this.packaging && !this.promotion && this.product.id != discount_product_id) {
                 return this.pos.gui.show_popup('number', {
                     'title': _t('Product have minimum price smaller list price, plese input price need to change'),
                     'value': 0,
@@ -1077,47 +1149,43 @@ odoo.define('pos_retail.order', function (require) {
                 _super_Orderline.set_unit_price.apply(this, arguments);
             }
         },
-        has_valid_product_lot: function () { // line multi lots
+        has_valid_product_lot: function () { //  TODO: is line multi lots or not
             if (this.lot_ids && this.lot_ids.length) {
                 return true
             } else {
                 return _super_Orderline.has_valid_product_lot.apply(this, arguments);
             }
         },
-        set_taxes: function (tax_ids) {
-            // add taxes to order line
+        set_taxes: function (tax_ids) { // TODO: add taxes to order line
             if (this.product) {
                 this.product.taxes_id = tax_ids;
                 this.trigger('change', this);
             }
         },
-
-        set_variants: function (variants) {
-            // add variants to order line
+        set_variants: function (variant_ids) { // TODO: add variants to order line
+            var self = this;
             var sale_price;
             if (this.pos.server_version == 10) {
                 sale_price = this.pos.get_price(this.product, this.pos.pricelist); // v10 only
             } else {
                 sale_price = this.product.get_price(this.product, this.pos.default_pricelist, this.quantity);
             }
-            this['variants'] = variants;
+            this.variants = _.map(variant_ids, function (variant_id) {
+                var variant = self.pos.variant_by_id[variant_id];
+                if (variant) {
+                    return variant
+                }
+            });
             this.price_manually_set = true;
-            if (variants.length == 0) {
+            if (this.variants.length == 0) {
                 this.set_unit_price(sale_price);
             } else {
                 var price_extra_total = sale_price;
-                for (var i = 0; i < variants.length; i++) {
-                    price_extra_total += variants[i].price_extra;
+                for (var i = 0; i < this.variants.length; i++) {
+                    price_extra_total += this.variants[i].price_extra;
                 }
                 this.set_unit_price(price_extra_total);
             }
-        },
-        get_price_tax_inclued: function () {
-            /*
-                Return subtotal tax included
-            */
-            var price = this.get_all_prices().priceWithTax;
-            return price;
         },
         get_product_price_quantity_item: function () {
             var product_tmpl_id = this.product.product_tmpl_id;
@@ -1302,8 +1370,18 @@ odoo.define('pos_retail.order', function (require) {
             }
         },
         set_sale_person: function (seller) {
-            this.seller = seller;
-            this.trigger('change', this);
+            if (this.pos.config.force_seller) {
+                var order = this.order;
+                _.each(order.orderlines.models, function (line) {
+                    line.seller = seller;
+                    line.trigger('change', line);
+                });
+                order.seller = seller;
+            } else {
+                this.seller = seller;
+                this.trigger('change', this);
+            }
+            this.order.trigger('change', this.order);
         },
         get_price_without_quantity: function () {
             if (this.quantity != 0) {
@@ -1349,12 +1427,9 @@ odoo.define('pos_retail.order', function (require) {
             }
         },
         get_price_discount: function () { // method return discount amount of pos order lines gui
-            var price_unit = this.get_unit_price();
-            var prices = this.get_all_prices();
-            var priceWithTax = prices['priceWithTax'];
-            var tax = prices['tax'];
-            var discount = priceWithTax - tax - price_unit;
-            return discount
+            var price = this.get_unit_price() * (1.0 - (this.get_discount() / 100.0));
+            var base_price = this.get_unit_price();
+            return (base_price - price) * this.quantity
         },
         get_unit: function () {
             if (!this.uom_id) {
@@ -1416,15 +1491,14 @@ odoo.define('pos_retail.order', function (require) {
                 current_qty += parseFloat(quantity);
                 if (current_qty > this.product['qty_available'] && this.product['type'] == 'product') {
                     var product = this.pos.db.get_product_by_id(this.product.id);
-                    return this.pos.gui.show_popup('dialog', {
+                    this.pos.gui.show_popup('confirm', {
                         title: 'Warning',
-                        body: product['name'] + ' have quantity on hand is ' + product.qty_available + ' , you could not set bigger than ' + product.qty_available,
+                        body: product['name'] + ' quantity on hand is 0, blocked sale it.',
                     });
                 }
             }
             var res = _super_Orderline.set_quantity.call(this, quantity, keep_price); // call style change parent parameter : keep_price
             if (this.combo_items && this.pos.config.screen_type != 'kitchen') { // if kitchen screen, no need reset combo items
-                this.combo_items = [];
                 this.trigger('change', this);
             }
             var get_product_price_quantity = this.get_product_price_quantity_item(); // product price filter by quantity of cart line. Example: buy 1 unit price 1, buy 10 price is 0.5
@@ -1504,70 +1578,10 @@ odoo.define('pos_retail.order', function (require) {
                     return true;
                 }
             }
+            if (orderline['combo_items'] || orderline.product.is_combo || orderline.is_return) {
+                return false;
+            }
             return merge
         },
-        // conflict with future change taxes
-        // compute_all: function (taxes, price_unit, quantity, currency_rounding, no_map_tax) {
-        //     var all_taxes = _super_Orderline.compute_all.apply(this, arguments);
-        //     if (!this.taxes_id || this.taxes_id == [] || this.taxes_id.length == 0) {
-        //         return all_taxes;
-        //     } else {
-        //         var taxes = [];
-        //         for (var number in this.taxes_id) {
-        //             taxes.push(this.pos.taxes_by_id[this.taxes_id[number]])
-        //         }
-        //         var self = this;
-        //         var list_taxes = [];
-        //         var currency_rounding_bak = currency_rounding;
-        //         if (this.pos.company.tax_calculation_rounding_method == "round_globally") {
-        //             currency_rounding = currency_rounding * 0.00001;
-        //         }
-        //         var total_excluded = round_pr(price_unit * quantity, currency_rounding);
-        //         var total_included = total_excluded;
-        //         var base = total_excluded;
-        //         _(taxes).each(function (tax) {
-        //             if (!no_map_tax) {
-        //                 tax = self._map_tax_fiscal_position(tax);
-        //             }
-        //             if (!tax) {
-        //                 return;
-        //             }
-        //             if (tax.amount_type === 'group') {
-        //                 var ret = self.compute_all(tax.children_tax_ids, price_unit, quantity, currency_rounding);
-        //                 total_excluded = ret.total_excluded;
-        //                 base = ret.total_excluded;
-        //                 total_included = ret.total_included;
-        //                 list_taxes = list_taxes.concat(ret.taxes);
-        //             } else {
-        //                 var tax_amount = self._compute_all(tax, base, quantity);
-        //                 tax_amount = round_pr(tax_amount, currency_rounding);
-        //
-        //                 if (tax_amount) {
-        //                     if (tax.price_include) {
-        //                         total_excluded -= tax_amount;
-        //                         base -= tax_amount;
-        //                     } else {
-        //                         total_included += tax_amount;
-        //                     }
-        //                     if (tax.include_base_amount) {
-        //                         base += tax_amount;
-        //                     }
-        //                     var data = {
-        //                         id: tax.id,
-        //                         amount: tax_amount,
-        //                         name: tax.name,
-        //                     };
-        //                     list_taxes.push(data);
-        //                 }
-        //             }
-        //         });
-        //         var tax_values = {
-        //             taxes: list_taxes,
-        //             total_excluded: round_pr(total_excluded, currency_rounding_bak),
-        //             total_included: round_pr(total_included, currency_rounding_bak)
-        //         };
-        //         return tax_values;
-        //     }
-        // },
     });
 });

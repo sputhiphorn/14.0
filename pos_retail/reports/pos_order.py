@@ -21,13 +21,18 @@ class pos_order(models.Model):
             journals_detail = {}
             salesmen_detail = {}
             summary_data = {}
+            order_detail = []
+            domain = []
             if vals.get('session_id'):
-                order_detail = self.env['pos.order'].search([('session_id.id', '=', vals.get('session_id'))])
+                domain = [('session_id', '=', vals.get('session_id'))]
             else:
-                order_detail = self.env['pos.order'].search([('date_order', '>=', vals.get('from_date')),
-                                                             ('date_order', '<=', vals.get('to_date'))
-                                                             ])
-            _logger.info(vals)
+                domain = [
+                    ('date_order', '>=', vals.get('from_date')),
+                    ('date_order', '<=', vals.get('to_date'))
+                ]
+            if vals.get('pos_branch_id'):
+                domain.append(('pos_branch_id', '=', vals.get('pos_branch_id')))
+            order_detail = self.sudo().search(domain)
             if vals.get('summary', None) == 'journals':
                 if (order_detail):
                     for each_order in order_detail:
@@ -120,7 +125,6 @@ class pos_order(models.Model):
 
     @api.model
     def product_summary_report(self, vals):
-        _logger.info(vals)
         result = {
             'product_summary': {},
             'category_summary': {},
@@ -138,13 +142,19 @@ class pos_order(models.Model):
             location_qty = 0
             category_qty = 0
             payment = 0
+            domain = []
             if vals.get('session_id'):
-                order_detail = self.env['pos.order'].search([('session_id.id', '=', vals.get('session_id'))])
+                domain = [
+                    ('session_id', '=', vals.get('session_id'))
+                ]
             else:
-                order_detail = self.env['pos.order'].search([('date_order', '>=', vals.get('from_date')),
-                                                             ('date_order', '<=', vals.get('to_date'))
-                                                             ])
-
+                domain = [
+                    ('date_order', '>=', vals.get('from_date')),
+                    ('date_order', '<=', vals.get('to_date'))
+                ]
+            if vals.get('pos_branch_id'):
+                domain.append(('pos_branch_id', '=', vals.get('pos_branch_id')))
+            order_detail = self.sudo().search(domain)
             if ('product_summary' in vals.get('summary') or len(vals.get('summary')) == 0):
                 if (order_detail):
                     for each_order in order_detail:
@@ -207,18 +217,19 @@ class pos_order(models.Model):
 
     @api.model
     def order_summary_report(self, vals):
-        _logger.info(vals)
         order_list = {}
         category_list = {}
         payment_list = {}
         if vals:
+            orders = []
+            domain = []
             if vals.get('session_id'):
-                orders = self.search(
-                    [('session_id.id', '=', vals.get('session_id'))])
+                domain = [('session_id', '=', vals.get('session_id'))]
             else:
-                orders = self.search(
-                    [('date_order', '>=', vals.get('from_date')), ('date_order', '<=', vals.get('to_date'))])
-
+                domain = [('date_order', '>=', vals.get('from_date')), ('date_order', '<=', vals.get('to_date'))]
+            if vals.get('pos_branch_id'):
+                domain.append(('pos_branch_id', '=', vals.get('pos_branch_id')))
+            orders = self.sudo().search(domain)
             if ('order_summary_report' in vals['summary'] or len(vals['summary']) == 0):
                 for each_order in orders:
                     order_list[each_order.state] = []

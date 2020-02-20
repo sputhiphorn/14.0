@@ -16,19 +16,20 @@
 
 .pos .ribbon span {
     font-size: 10px;
-    color: #FFF;
+    color: red;
     text-transform: uppercase;
     text-align: center;
     line-height: 20px;
     transform: rotate(45deg);
     -webkit-transform: rotate(-45deg);
     width: 127px;
+    font-weight: 400;
+    font-size: 9px;
     display: block;
-    background: linear-gradient(#FF5722 0%, #F44336 100%);
-    box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 1);
+    border-bottom: 1px solid gray;
     position: absolute;
-    top: 22px;
-    left: -35px
+    top: 30px;
+    left: -42px;
 }
 
 .pos .ribbon span::before {
