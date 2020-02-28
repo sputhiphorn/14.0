@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<templates id="template" xml:space="preserve">
-
-    <t t-extend="ProductCategoriesWidget">
-        <t t-jquery="span[class*='breadcrumb-home']" t-operation="replace">
-        </t>
-    </t>
-
-</templates>
