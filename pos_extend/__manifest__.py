@@ -8,7 +8,7 @@
     'company': 'KhmerDev',
     'website': 'http://www.khmerdev.com',
     'category': 'Point of Sale',
-    'depends': ['base', 'point_of_sale', 'pos_retail'],
+    'depends': ['point_of_sale', 'pos_retail'],
     'license': 'OPL-1',
     'data': [
     	'views/register.xml',
