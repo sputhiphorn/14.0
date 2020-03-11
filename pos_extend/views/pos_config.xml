@@ -1,0 +1,18 @@
+<odoo>
+    <data>
+
+        <record model="ir.ui.view" id="pos_config_extend">
+            <field name="name">pos.config.extend</field>
+            <field name="model">pos.config</field>
+            <field name="inherit_id" ref="pos_retail.pos_config_retail"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='update_tax']" position="after">
+                    <field name="multi_currency"/>
+                    <field name="multi_currency_update_rate"
+                           attrs="{'invisible' : [('multi_currency', '=', False)]}"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -3,4 +3,122 @@
      <t t-extend="PaymentScreen-Paymentmethods">
          <t t-jquery=".paymentmethods">$(this).addClass("w-23p");</t>
      </t>
+    <t t-extend="PaymentScreen-Paymentlines">
+        <t t-jquery="tbody" t-operation="replace">
+            <tbody>
+                <t t-foreach='paymentlines' t-as='line'>
+                    <t t-if='line.selected'>
+                        <tr class='paymentline selected'>
+                            <td class='col-due'> <t t-esc='widget.format_currency_no_symbol(order.get_due(line))' /> </td>
+                            <td class='col-tendered edit'>
+                                <t t-esc='widget.inputbuffer' />
+                                <!-- <t t-esc='line.get_amount()' /> -->
+                            </td>
+                            <t t-if='order.get_change(line)'>
+                                <td class='col-change highlight' >
+                                    <t t-esc='widget.format_currency_no_symbol(order.get_change(line))' />
+                                </td>
+                            </t>
+                            <t t-if='!order.get_change(line)'>
+                                <td class='col-change' ></td>
+                            </t>
+
+                            <td class='col-name' > <t t-esc='line.name' /> </td>
+                            <td class='delete-button' t-att-data-cid='line.cid'> <i class='fa fa-times-circle' /> </td>
+                        </tr>
+                    </t>
+                    <t t-if='!line.selected'>
+                        <tr class='paymentline' t-att-data-cid='line.cid'>
+                            <td class='col-due'> <t t-esc='widget.format_currency_no_symbol(order.get_due(line))' /> </td>
+                            <td class='col-tendered'> <t t-esc='widget.format_currency_no_symbol(line.get_amount())' /> </td>
+                            <td class='col-change'>
+                                <t t-if='order.get_change(line)'>
+                                    <t t-esc='widget.format_currency_no_symbol(order.get_change(line))' />
+                                 </t>
+                            </td>
+                            <td class='col-name'> <t t-esc='line.name' /> </td>
+                            <td class='delete-button' t-att-data-cid='line.cid'> <i class='fa fa-times-circle' /> </td>
+                        </tr>
+                    </t>
+                </t>
+                <t t-if='extradue'>
+                    <tr class='paymentline extra' t-att-data-cid='0'>
+                        <td class='col-due'> <t t-esc='widget.format_currency_no_symbol(extradue)' /> </td>
+                    </tr>
+                </t>
+            </tbody>
+        </t>
+    </t>
+    <!--Multi Currency-->
+    <t t-extend="PaymentScreenWidget">
+        <t t-jquery="section[class*='paymentlines-container']" t-operation="before">
+        <t t-if="widget.pos.config.multi_currency and widget.pos.currencies.length > 0">
+            <t t-set="order" t-value="widget.pos.get_order()"/>
+            <t t-set="company_currency" t-value="widget.pos.currency_by_id[widget.pos.currency['id']]"/>
+            <t t-if="order">
+                <t t-set="selected_currency" t-value="order.selected_currency"/>
+                <section class='multi-currency'>
+                    <table class='paymentlines'>
+                        <colgroup>
+                            <col class='due' />
+                            <col class='tendered' />
+                            <col class='change' />
+                            <col class='method' />
+                            <col class='controls' />
+                        </colgroup>
+                        <thead>
+                            <tr class='label'>
+                                <th>Currency</th>
+                                <th>Rate</th>
+                                <th>Covert</th>
+                                <th>Paid full</th>
+                                <th>Add rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class='paymentline selected'>
+                                <td>
+                                    <select class='select-currency'>
+                                        <option value='0'>Currency</option>
+                                        <t t-foreach='widget.pos.currencies' t-as='currency'>
+                                            <option t-att-value='currency.id' t-att-selected="order['selected_currency'] ? ((currency['id'] === order['selected_currency'].id) ? true : undefined) : undefined">
+                                                <t t-esc='currency.name'/>
+                                                (<t t-esc='currency.symbol'/>)
+                                            </option>
+                                        </t>
+                                    </select>
+                                </td>
+                                <td>
+                                    <div class='subentry'>
+                                        <span class="value col-due currency-rate">
+                                            <t t-if="selected_currency">
+                                                <t t-esc="selected_currency['rate'].toFixed(2)"/>
+                                            </t>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td><div class='subentry'><span class="value col-due currency-covert">
+                                    <t t-if="selected_currency">
+                                        1 <t t-esc="selected_currency['name']"/> =  <t t-esc="(company_currency['rate'] / selected_currency['rate']).toFixed(2)"/> <t t-esc="company_currency['name']"/>
+                                    </t>
+                                </span></div></td>
+                                <td><div class='subentry'><span class="value col-due currency-paid-full">
+                                    <t t-if="!selected_currency">
+                                        <t t-esc="widget.format_currency_no_symbol(order.get_due())"/>
+                                    </t>
+                                    <t t-if="selected_currency">
+                                        <t t-esc="widget.format_currency_no_symbol(order.get_due() * selected_currency['rate'] / company_currency['rate'] )"/>
+                                    </t>
+                                </span></div></td>
+                                <t t-if="widget.pos.config.multi_currency_update_rate">
+                                    <td class='update-rate'> <i class='fa fa-edit' style="padding-left: 8px"/></td>
+                                </t>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </t>
+        </t>
+    </t>
+    </t>
 </templates>

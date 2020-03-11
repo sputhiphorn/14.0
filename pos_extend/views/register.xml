@@ -12,9 +12,10 @@
             <script type="text/javascript" src="/pos_extend/static/src/js/model.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/order.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/screens.js"/>
-            <script type="text/javascript" src="/pos_extend/static/src/js/payment_pad.js"></script>
+            <script type="text/javascript" src="/pos_extend/static/src/js/payment_pad.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/pos_payment.js"/>
             <script type="text/javascript" src="/pos_extend/static/src/js/database.js"/>
+            <script type="text/javascript" src="/pos_extend/static/src/js/screen_payment.js"/>
             <link rel="stylesheet" href="/pos_extend/static/src/css/pos_extend.css"/>
             <link rel="stylesheet" href="/pos_extend/static/src/css/payment_pad.css"/>
         </xpath>

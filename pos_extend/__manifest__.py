@@ -13,6 +13,7 @@
     'data': [
     	'views/register.xml',
     	'views/pos_order.xml',
+        'views/pos_config.xml',
         'views/inherit_report_saledetails.xml'
     ],
     'qweb': ['static/src/xml/*.xml',],

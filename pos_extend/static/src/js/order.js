@@ -185,6 +185,124 @@ odoo.define('pos_extend.order', function (require) {
                 label_thx: _t('Thank you for visiting and supporting')
             };
             return label_text;
+        },
+//        Multi Currency
+        get_change: function (paymentline) {
+            var change = _super_Order.get_change.apply(this, arguments);
+            var client = this.get_client();
+            var wallet_register = _.find(this.pos.cashregisters, function (register_journal) {
+                return register_journal.journal['pos_method_type'] == 'wallet';
+            }); // display wallet method when have change
+            if (wallet_register) {
+                var $journal_element = $("[data-id='" + wallet_register.journal['id'] + "']");
+                if (change > 0 || (client && client['wallet'] > 0)) {
+                    $journal_element.removeClass('oe_hidden');
+                    $journal_element.addClass('highlight');
+                } else {
+                    $journal_element.addClass('oe_hidden');
+                }
+            }
+            var company_currency = this.pos.company.currency_id; // return amount with difference currency
+            if (paymentline && paymentline.cashregister && paymentline.cashregister.currency_id && paymentline.cashregister.currency_id[0] != company_currency[0]) {
+                var new_change = -this.get_total_with_tax();
+                var lines = this.paymentlines.models;
+                var company_currency = this.pos.company.currency_id;
+                var company_currency_data = this.pos.currency_by_id[company_currency[0]];
+                for (var i = 0; i < lines.length; i++) {
+                    var selected_currency = this.pos.currency_by_id[lines[i].cashregister.currency_id[0]];
+                    var selected_rate = selected_currency['rate'];
+                    var amount_of_line = lines[i].get_amount();
+                    new_change += amount_of_line * selected_rate / company_currency_data['rate'];
+                    if (lines[i] === paymentline) {
+                        break;
+                    }
+                }
+                var currency_change = round_pr(Math.max(0, new_change), this.pos.currency.rounding);
+                if (currency_change > 0) {
+                    this.active_button_add_wallet(true);
+                } else {
+                    this.active_button_add_wallet(false);
+                }
+                return currency_change
+            }
+            if (change > 0) {
+                this.active_button_add_wallet(true);
+            } else {
+                this.active_button_add_wallet(false);
+            }
+            return change;
+        },
+        get_due: function (paymentline) {
+            var due = _super_Order.get_due.apply(this, arguments);
+            if (!paymentline) {
+                return due;
+            }
+            var active_multi_currency = false;
+            var lines = this.paymentlines.models;
+            var company_currency = this.pos.company.currency_id;
+            var company_currency_data = this.pos.currency_by_id[company_currency[0]];
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var currency_id_of_line = line.cashregister.currency_id[0];
+                var currency_of_line = this.pos.currency_by_id[currency_id_of_line];
+                if (currency_of_line['id'] != company_currency_data['id']) {
+                    active_multi_currency = true;
+                }
+            }
+            var paymentline_currency_id = paymentline.cashregister.currency_id[0]
+            var paymentline_currency = this.pos.currency_by_id[paymentline_currency_id];
+            var payment_rate = paymentline_currency['rate'];
+            if (paymentline_currency['id'] != company_currency_data['id']) {
+                active_multi_currency = true
+            }
+            if (!active_multi_currency || active_multi_currency == false) {
+                return due;
+            } else {
+                var total_amount_with_tax = this.get_total_with_tax();
+                if (!payment_rate || payment_rate == 0) {
+                    return due
+                }
+                var new_due = total_amount_with_tax * payment_rate / company_currency_data['rate'];
+                var lines = this.paymentlines.models;
+                for (var i = 0; i < lines.length; i++) {
+                    if (lines[i] === paymentline) {
+                        break;
+                    } else {
+                        var line = lines[i];
+                        var line_cashregister = line['cashregister'];
+                        var line_currency_rate = this.pos.currency_by_id[line_cashregister['currency_id'][0]]['rate'];
+                        var line_amount = lines[i].get_amount() * line_currency_rate;
+                        new_due -= line_amount * payment_rate / company_currency_data['rate'];
+                    }
+                }
+                var new_due = round_pr(Math.max(0, new_due), this.pos.currency.rounding);
+                return new_due
+            }
+        },
+        get_total_paid: function () {
+            var total_paid = _super_Order.get_total_paid.apply(this, arguments);
+            var lines = this.paymentlines.models;
+            var active_multi_currency = false;
+            var total_paid_multi_currency = 0;
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var currency = line.cashregister.currency_id;
+                var company_currency = this.pos.company.currency_id;
+                var company_currency_data = this.pos.currency_by_id[company_currency[0]];
+                if (currency[0] != company_currency[0]) {
+                    var register_currency = this.pos.currency_by_id[currency[0]];
+                    var register_rate = register_currency['rate'];
+                    active_multi_currency = true;
+                    total_paid_multi_currency += line.get_amount() * register_rate / company_currency_data['rate'];
+                } else {
+                    total_paid_multi_currency += line.get_amount()
+                }
+            }
+            if (active_multi_currency == true) {
+                return round_pr(Math.max(0, total_paid_multi_currency), this.pos.currency.rounding);
+            } else {
+                return total_paid;
+            }
         }
     });
     var _super_Orderline = models.Orderline.prototype;
