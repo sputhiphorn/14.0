@@ -72,7 +72,6 @@
                                 <th>Rate</th>
                                 <th>Covert</th>
                                 <th>Paid full</th>
-                                <th>Add rate</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -110,9 +109,6 @@
                                         <t t-esc="widget.format_currency_no_symbol(order.get_due() * selected_currency['rate'] / company_currency['rate'] )"/>
                                     </t>
                                 </span></div></td>
-                                <t t-if="widget.pos.config.multi_currency_update_rate">
-                                    <td class='update-rate'> <i class='fa fa-edit' style="padding-left: 8px"/></td>
-                                </t>
                             </tr>
                         </tbody>
                     </table>
