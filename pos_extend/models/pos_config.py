@@ -7,3 +7,4 @@ class pos_config(models.Model):
 
     # Multi Currency
     multi_currency = fields.Boolean('Multi currency', default=0)
+    multi_currency_update_rate = fields.Boolean('Update rate', default=0)
