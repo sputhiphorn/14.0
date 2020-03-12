@@ -8,6 +8,8 @@
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='update_tax']" position="after">
                     <field name="multi_currency"/>
+                    <field name="multi_currency_update_rate"
+                           attrs="{'invisible' : [('multi_currency', '=', False)]}"/>
                 </xpath>
             </field>
         </record>
