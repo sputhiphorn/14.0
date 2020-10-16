@@ -41,36 +41,30 @@
                             <table class="table table-condensed able table-striped">
                                 <tr style="font-size:10px;">
                                     <td class="fw-b">ឈ្មោះក្រុមហ៊ុន ប្ញ អតិថិជន<br/>Company Name/Customer</td>
-                                    <td colspan="3" class="fw-b"><span t-field="o.partner_id" /></td>
+                                    <td colspan="3" class="fw-b"><span t-field="o.partner_id"/></td>
                                     <td class="fw-b">លេខរៀងវិក្កយបត្រ<br/>Invoice No.</td>
                                     <td><span t-field="o.number"/></td>
                                 </tr>
                                 <tr style="font-size:10px;">
                                     <td class="fw-b">អាស័យដ្ឋាន ផ្ទះលេខ<br/>Address: No.</td>
-                                    <td style="width:120px"><span t-field="o.partner_id.street"/></td>
-                                    <td class="fw-b">ផ្លូវលេខ<br/>Street</td>
-                                    <td style="width:120px"><span t-field="o.partner_id.street"/></td>
-                                    <td class="fw-b">ឃុំ/សង្កាត់<br/>Commune/Sangkat</td>
-                                    <td><span t-field="o.partner_id.street2"/></td>
-                                </tr>
-                                <tr style="font-size:10px;">
-                                    <td class="fw-b">ក្រុង/ស្រុក/ខ័ណ្ឌ<br/>Town/District/Khan</td>
-                                    <td><span t-field="o.partner_id.street2"/></td>
-                                    <td class="fw-b">ខេត្ត/រាជធានី<br/>Province/City</td>
-                                    <td><span t-field="o.partner_id.city"/></td>
+                                    <td colspan="3" >
+                                        <span t-field="o.partner_id.street"/>
+                                        <t t-if="o.partner_id.country_id">, <span t-field="o.partner_id.country_id"/></t>
+                                        <t t-if="o.partner_id.city">, <span t-field="o.partner_id.city"/></t>
+                                    </td>
                                     <td class="fw-b">ទូរស័ព្ទលេខ:<br/>Telephone No.</td>
                                     <td><span t-field="o.partner_id.phone"/></td>
                                 </tr>
                                 <tr style="font-size:10px;">
                                     <t t-if="o.partner_id.vat">
                                         <td class="fw-b">លេខអត្តសញ្ញាណកម្ម​ អតប<br/>(VATTIN)</td>
-                                        <td colspan="3" style="font-size:14px;"><span t-esc="o.partner_id.vat[0:4]+'-'+o.partner_id.vat[4:]" /></td>
+                                        <td colspan="3" style="font-size:14px;"><span t-esc="o.partner_id.vat[0:4]+'-'+o.partner_id.vat[4:]"/></td>
                                         <td class="fw-b">កាលបរិច្ឆេទ<br/>Date:</td>
-                                        <td><span t-field="o.date_invoice" /></td>
+                                        <td><span t-field="o.date_invoice"/></td>
                                     </t>
                                     <t t-else="">
                                         <td class="fw-b">កាលបរិច្ឆេទ<br/>Date:</td>
-                                        <td><span t-field="o.date_invoice" /></td>
+                                        <td><span t-field="o.date_invoice"/></td>
                                     </t>
                                 </tr>
                             </table>
@@ -138,33 +132,18 @@
                                 <tfoot style="font-size:9px;">
                                     <tr>
                                         <t t-if="o._get_tax_amount_by_group()">
-                                            <t t-if="display_discount">
-                                                <td colspan="11" class="text-right borderAround">
-                                                    សរុប  Sub total
-                                                </td>
-                                            </t>
-                                            <t t-else="">
-                                                <td colspan="10" class="text-right borderAround">
-                                                    សរុប  Sub total
-                                                </td>
-                                            </t>
+                                            <td colspan="10" class="text-right borderAround">
+                                                សរុប  Sub total
+                                            </td>
                                             <td class="text-right borderAround">
                                                 <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                             </td>
                                         </t>
                                         <t t-else="">
-                                            <!--Is Discount?-->
                                             <tr>
-                                                <t t-if="display_discount">
-                                                    <td  colspan="11" class="text-right borderAround">
-                                                        សរុបរួម  Grand Total
-                                                    </td>
-                                                </t>
-                                                <t t-else="">
-                                                    <td  colspan="10" class="text-right borderAround">
-                                                        សរុបរួម  Grand Total
-                                                    </td>
-                                                </t>
+                                                <td  colspan="10" class="text-right borderAround">
+                                                    សរុបរួម  Grand Total
+                                                </td>
                                                 <td class="text-right borderAround">
                                                     <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                                 </td>
@@ -181,12 +160,7 @@
                                     </tr>
                                     <t t-foreach="o._get_tax_amount_by_group()" t-as="amount_by_group">
                                         <tr>
-                                            <t t-if="display_discount">
-                                                <td colspan="11" class="text-right borderAround">អារករលើតម្លៃបន្ថែម(<span t-esc="amount_by_group[0]" />)</td>
-                                            </t>
-                                            <t t-else="">
-                                                <td colspan="10" class="text-right borderAround">អារករលើតម្លៃបន្ថែម(<span t-esc="amount_by_group[0]" />)</td>
-                                            </t>
+                                            <td colspan="10" class="text-right borderAround">អារករលើតម្លៃបន្ថែម(<span t-esc="amount_by_group[0]" />)</td>
                                             <td class="text-right borderAround">
                                                 <span t-esc="amount_by_group[1]" t-options='{"widget":"monetary", "display_currency": o.currency_id}' />
                                             </td>
@@ -194,17 +168,9 @@
                                     </t>
                                     <t t-if="o._get_tax_amount_by_group()">
                                         <tr>
-                                            <!--Is Discount?-->
-                                            <t t-if="display_discount">
-                                                <td colspan="11" class="text-right borderAround">
-                                                    សរុបរួម  Grand Total
-                                                </td>
-                                            </t>
-                                            <t t-else="">
-                                                <td colspan="10" class="text-right borderAround">
-                                                    សរុបរួម  Grand Total
-                                                </td>
-                                            </t>
+                                            <td colspan="10" class="text-right borderAround">
+                                                សរុបរួម  Grand Total
+                                            </td>
                                             <td class="text-right borderAround">
                                                 <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                             </td>
