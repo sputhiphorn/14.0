@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    
     <template id="assets_backend_index" name="index pos ui" inherit_id="point_of_sale.index">
         <xpath expr="//head" position="inside">           
             <script type="text/javascript" src="/pos_extend/static/src/libs/js/jquery-barcode-last.min.js"/>
         </xpath>
     </template>
-    
     <template id="assets_backend" name="pos_extend assets" inherit_id="point_of_sale.assets">
         <xpath expr="//script[last()]" position="after">
             <script type="text/javascript" src="/pos_extend/static/src/js/model.js"/>
@@ -20,5 +18,9 @@
             <link rel="stylesheet" href="/pos_extend/static/src/css/payment_pad.css"/>
         </xpath>
     </template>
-
+    <template id="override_popups" inherit_id="pos_retail.pos_retail_assets">
+        <xpath expr="//script[@src='/pos_retail/static/src/js/popups.js']" position="replace">
+            <script type="text/javascript" src="/pos_extend/static/src/js/popups.js"/>
+        </xpath>
+    </template>
 </odoo>

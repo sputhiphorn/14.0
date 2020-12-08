@@ -318,6 +318,31 @@ odoo.define('pos_extend.order', function (require) {
             var tax = prices['tax'];
             var discount = priceWithTax - tax - price_unit;
             return discount;
-        }
+        },
+        set_variants: function (variant_ids) { // TODO: add variants to order line
+            var self = this;
+            var sale_price;
+            if (this.pos.server_version == 10) {
+                sale_price = this.pos.get_price(this.product, this.pos.pricelist); // v10 only
+            } else {
+                sale_price = this.price;
+            }
+            this.variants = _.map(variant_ids, function (variant_id) {
+                var variant = self.pos.variant_by_id[variant_id];
+                if (variant) {
+                    return variant
+                }
+            });
+            this.price_manually_set = false;
+            if (this.variants.length == 0) {
+                this.set_unit_price(sale_price);
+            } else {
+                var price_extra_total = sale_price;
+                for (var i = 0; i < this.variants.length; i++) {
+                    price_extra_total += this.variants[i].price_extra;
+                }
+                this.set_unit_price(price_extra_total);
+            }
+        },
     });
 });
